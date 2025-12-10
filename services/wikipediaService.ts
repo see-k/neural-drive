@@ -33,6 +33,10 @@ export const fetchWikipediaData = async (query: string): Promise<WikiData | null
     html = html.replace(/href="\.\//g, 'href="https://en.wikipedia.org/wiki/');
     html = html.replace(/href="\/wiki\//g, 'target="_blank" href="https://en.wikipedia.org/wiki/');
     
+    // Fix image sources (protocol relative to absolute https)
+    html = html.replace(/src="\/\//g, 'src="https://');
+    html = html.replace(/srcset="\/\//g, 'srcset="https://');
+    
     // Remove specific problematic tags if simple regex permits, 
     // though CSS display:none is safer for structure.
     // We rely mostly on CSS in index.html to hide .infobox, .mw-editsection, etc.

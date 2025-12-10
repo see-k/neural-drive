@@ -13,11 +13,6 @@ interface MindMapProps {
 
 const linkPath = (d: d3.HierarchyPointLink<KnowledgeNode>) => {
   const { source, target } = d;
-  // Standard horizontal tree link
-  // Source is the hexagon center (source.y, source.x)
-  // Target is the hexagon center (target.y, target.x)
-  // We draw a bezier or elbow. 
-  // Let's use a nice cubic bezier for smooth "neural" look
   return `M${source.y},${source.x}
           C${(source.y + target.y) / 2},${source.x}
            ${(source.y + target.y) / 2},${target.x}
@@ -34,7 +29,8 @@ const hexPoints = (radius: number) => {
 
 export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, height, mergeSelection = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [transform, setTransform] = useState(d3.zoomIdentity);
+  // Store zoom behavior in ref to access it in handlers
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   
   const mergeIds = new Set(mergeSelection.map(n => n.id));
 
@@ -44,8 +40,7 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>('.main-group');
 
-    // Spacing: [Vertical Node Separation, Horizontal Level Separation]
-    // Increased vertical spacing to accommodate the card below the node
+    // Layout configuration
     const treeLayout = d3.tree<KnowledgeNode>()
       .nodeSize([220, 350]) 
       .separation((a, b) => (a.parent === b.parent ? 1.1 : 1.2));
@@ -114,7 +109,7 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       })
       .style('cursor', 'pointer');
 
-    // 1. Hexagon Shape (The Anchor)
+    // 1. Hexagon Shape
     nodeEnter.append('polygon')
       .attr('points', hexPoints(12))
       .attr('fill', '#000')
@@ -122,7 +117,7 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       .attr('stroke-width', 2)
       .attr('class', 'node-hex transition-colors duration-300');
 
-    // 2. Pulse Effect for Loading
+    // 2. Pulse Effect
     nodeEnter.append('circle')
       .attr('r', 20)
       .attr('fill', 'none')
@@ -131,15 +126,15 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       .attr('opacity', 0)
       .attr('class', 'loading-ring');
 
-    // 3. Title Text (Above Hexagon)
+    // 3. Title Text
     nodeEnter.append('text')
-      .attr('dy', -25) // Position above
+      .attr('dy', -25)
       .attr('text-anchor', 'middle')
       .attr('class', 'node-title font-mono text-[10px] font-bold fill-white uppercase tracking-widest')
       .style('text-shadow', '0 0 5px #000')
       .text((d) => d.data.name);
 
-    // 4. Info Card (Below Hexagon) - Floating context
+    // 4. Info Card
     const cardWidth = 200;
     const cardHeight = 80;
     
@@ -147,7 +142,7 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       .attr('width', cardWidth)
       .attr('height', cardHeight)
       .attr('x', -cardWidth / 2)
-      .attr('y', 20) // Start below hexagon
+      .attr('y', 20)
       .style('overflow', 'visible');
 
     fo.append('xhtml:div')
@@ -159,7 +154,6 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
     nodeUpdate.transition().duration(500)
       .attr('transform', (d) => `translate(${d.y},${d.x})`);
 
-    // Update Hexagon Style based on state
     nodeUpdate.select('polygon')
       .attr('stroke', (d: any) => {
          if (mergeIds.has(d.data.id)) return '#f59e0b';
@@ -168,7 +162,6 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       })
       .attr('fill', (d: any) => mergeIds.has(d.data.id) ? 'rgba(245,158,11,0.2)' : '#000');
 
-    // Update Loading Animation
     nodeUpdate.select('.loading-ring')
       .attr('opacity', (d: any) => d.data.isLoading ? 1 : 0)
       .each(function(d: any) {
@@ -189,7 +182,6 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
          }
       });
 
-    // Update Card Content
     nodeUpdate.select('.node-card-wrapper')
       .html((d: any) => {
         const isMergeSelected = mergeIds.has(d.data.id);
@@ -205,17 +197,12 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
 
         return `
           <div class="pointer-events-none">
-            <!-- Connecting Line from Hex to Card -->
             <div class="absolute -top-5 left-1/2 w-[1px] h-5 bg-gradient-to-b from-transparent to-cyber-border"></div>
-            
-            <!-- Card Body -->
             <div class="w-full bg-black/80 backdrop-blur-sm border ${borderColor} p-2 rounded-sm relative ${shadow}">
-               <!-- Decorative Corners -->
                <div class="absolute top-0 left-0 w-1 h-1 border-t border-l border-white/20"></div>
                <div class="absolute top-0 right-0 w-1 h-1 border-t border-r border-white/20"></div>
                <div class="absolute bottom-0 left-0 w-1 h-1 border-b border-l border-white/20"></div>
                <div class="absolute bottom-0 right-0 w-1 h-1 border-b border-r border-white/20"></div>
-
                <div class="text-[9px] text-gray-400 font-sans leading-relaxed line-clamp-3 text-center opacity-80">
                  ${description}
                </div>
@@ -229,16 +216,20 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       .attr('opacity', 0)
       .remove();
 
+    // Init Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
-        setTransform(event.transform);
       });
-
+    
+    // Assign to ref
+    zoomBehaviorRef.current = zoom;
     svg.call(zoom);
 
-    if (transform.k === 1 && transform.x === 0 && transform.y === 0 && root) {
+    // Initial center on first load if we haven't zoomed yet (identity)
+    const currentTransform = d3.zoomTransform(svg.node()!);
+    if (currentTransform.k === 1 && currentTransform.x === 0 && currentTransform.y === 0 && root) {
        const initialTransform = d3.zoomIdentity.translate(150, height / 2).scale(0.85);
        svg.call(zoom.transform, initialTransform);
     }
@@ -246,13 +237,14 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
   }, [data, width, height, onNodeClick, mergeSelection]);
 
   const handleZoom = (scaleFactor: number) => {
-    if (!svgRef.current) return;
-    d3.select(svgRef.current).transition().call(d3.zoom<SVGSVGElement, unknown>().scaleBy, scaleFactor);
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    d3.select(svgRef.current).transition().duration(300).call(zoomBehaviorRef.current.scaleBy, scaleFactor);
   };
+  
   const handleCenter = () => {
-      if (!svgRef.current) return;
-      const t = d3.zoomIdentity.translate(150, height / 2).scale(0.85);
-      d3.select(svgRef.current).transition().duration(750).call(d3.zoom<SVGSVGElement, unknown>().transform, t);
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    const t = d3.zoomIdentity.translate(150, height / 2).scale(0.85);
+    d3.select(svgRef.current).transition().duration(750).call(zoomBehaviorRef.current.transform, t);
   };
 
   return (

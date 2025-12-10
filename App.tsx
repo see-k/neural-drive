@@ -317,7 +317,7 @@ const App: React.FC = () => {
 
         {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
         {rootNode && (
-          <div className="pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+          <div className={`pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out ${selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}`}>
              
              {/* Mode Toggles */}
              <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">

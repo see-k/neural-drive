@@ -8,12 +8,12 @@ interface NetworkGraphProps {
   onNodeClick: (node: KnowledgeNode) => void;
   width: number;
   height: number;
-  mergeSelection?: KnowledgeNode[]; // New prop
+  mergeSelection?: KnowledgeNode[];
 }
 
 export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, width, height, mergeSelection = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   // Extract IDs
   const mergeIds = new Set(mergeSelection.map(n => n.id));
@@ -31,13 +31,13 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
     const nodes = root.descendants();
     const links = root.links();
 
-    // Force Simulation with higher decay for stability
+    // Force Simulation
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
       .force("link", d3.forceLink(links).id((d: any) => d.data.id).distance(120))
-      .force("charge", d3.forceManyBody().strength(-300)) // Reduced repulsion
+      .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide(30))
-      .alphaDecay(0.05); // Faster settlement
+      .alphaDecay(0.05);
 
     // Links
     const link = g.append("g")
@@ -59,11 +59,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
         .on("drag", dragged)
         .on("end", dragended) as any)
       .on("mouseenter", function(event, d) {
-          // HOVER: Highlight connected nodes and links
           const linkedIds = new Set();
           linkedIds.add(d.data.id);
-          
-          // Find connected links and neighbors
           link.each(function(l: any) {
             if (l.source === d || l.target === d) {
                d3.select(this).attr("stroke", "#00f3ff").attr("stroke-opacity", 1).attr("stroke-width", 3);
@@ -71,50 +68,23 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
                linkedIds.add(l.target.data.id);
             }
           });
-          
-          // Dim others
           nodeGroup.style("opacity", 0.1);
           link.style("opacity", 0.1);
-
-          // Highlight connected
-          nodeGroup.filter((n: any) => linkedIds.has(n.data.id))
-            .style("opacity", 1);
-            
-          link.filter((l: any) => l.source === d || l.target === d)
-             .style("opacity", 1);
-             
-          // Highlight self extra
-          d3.select(this).select("circle")
-             .attr("stroke", "#fff")
-             .attr("fill", "#050505")
-             .attr("r", 25);
-             
-          d3.select(this).select("text")
-             .attr("fill", "#fff")
-             .style("font-size", "14px")
-             .style("text-shadow", "0 0 10px #00f3ff");
-
+          nodeGroup.filter((n: any) => linkedIds.has(n.data.id)).style("opacity", 1);
+          link.filter((l: any) => l.source === d || l.target === d).style("opacity", 1);
+          d3.select(this).select("circle").attr("stroke", "#fff").attr("fill", "#050505").attr("r", 25);
+          d3.select(this).select("text").attr("fill", "#fff").style("font-size", "14px").style("text-shadow", "0 0 10px #00f3ff");
       })
       .on("mouseleave", function(event, d) {
-          // Reset
           nodeGroup.style("opacity", 1);
-          link.style("opacity", 1)
-              .attr("stroke", "#333")
-              .attr("stroke-opacity", 0.6)
-              .attr("stroke-width", 1.5);
-
+          link.style("opacity", 1).attr("stroke", "#333").attr("stroke-opacity", 0.6).attr("stroke-width", 1.5);
           d3.select(this).select("circle")
              .attr("stroke", (n: any) => {
                  if (mergeIds.has(n.data.id)) return '#f59e0b';
                  return n.data.isLoading ? '#ff2a6d' : '#00f3ff';
              })
-             .attr("fill", "#000")
-             .attr("r", 20);
-             
-          d3.select(this).select("text")
-             .attr("fill", "#e0e0e0")
-             .style("font-size", "12px")
-             .style("text-shadow", "0 0 5px #000");
+             .attr("fill", "#000").attr("r", 20);
+          d3.select(this).select("text").attr("fill", "#e0e0e0").style("font-size", "12px").style("text-shadow", "0 0 5px #000");
       });
 
     // Node Circles
@@ -122,7 +92,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
       .attr("r", 20)
       .attr("fill", "#000")
       .attr("stroke", (d) => {
-          if (mergeIds.has(d.data.id)) return '#f59e0b'; // Amber
+          if (mergeIds.has(d.data.id)) return '#f59e0b';
           return d.data.isLoading ? '#ff2a6d' : '#00f3ff';
       })
       .attr("stroke-width", 2)
@@ -132,7 +102,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
         onNodeClick(d.data);
       });
     
-    // Pulse animation for loading nodes (Red pulse)
+    // Loading Animation
     nodeGroup.filter(d => !!d.data.isLoading)
         .append("circle")
         .attr("r", 25)
@@ -140,18 +110,9 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
         .attr("stroke", "#ff2a6d")
         .attr("stroke-opacity", 0.5)
         .append("animate")
-        .attr("attributeName", "r")
-        .attr("from", 20)
-        .attr("to", 40)
-        .attr("dur", "1.5s")
-        .attr("repeatCount", "indefinite")
+        .attr("attributeName", "r").attr("from", 20).attr("to", 40).attr("dur", "1.5s").attr("repeatCount", "indefinite")
         .select(function() { return this.parentNode as Element; })
-        .append("animate")
-        .attr("attributeName", "opacity")
-        .attr("from", 1)
-        .attr("to", 0)
-        .attr("dur", "1.5s")
-        .attr("repeatCount", "indefinite");
+        .append("animate").attr("attributeName", "opacity").attr("from", 1).attr("to", 0).attr("dur", "1.5s").attr("repeatCount", "indefinite");
 
     // Labels
     nodeGroup.append("text")
@@ -165,16 +126,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
       .style("pointer-events", "none")
       .style("text-shadow", "0 0 5px #000");
 
-    // Simulation tick
     simulation.on("tick", () => {
-      link
-        .attr("x1", (d: any) => d.source.x)
-        .attr("y1", (d: any) => d.source.y)
-        .attr("x2", (d: any) => d.target.x)
-        .attr("y2", (d: any) => d.target.y);
-
-      nodeGroup
-        .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+      link.attr("x1", (d: any) => d.source.x).attr("y1", (d: any) => d.source.y)
+          .attr("x2", (d: any) => d.target.x).attr("y2", (d: any) => d.target.y);
+      nodeGroup.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
     // Zoom
@@ -184,6 +139,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
         g.attr('transform', event.transform);
       });
 
+    zoomBehaviorRef.current = zoom;
     svg.call(zoom);
 
     // Drag functions
@@ -192,37 +148,30 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
       d.fx = d.x;
       d.fy = d.y;
     }
-
     function dragged(event: any, d: any) {
       d.fx = event.x;
       d.fy = event.y;
     }
-
     function dragended(event: any, d: any) {
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
     }
 
-  }, [data, width, height, mergeSelection, onNodeClick]); // Added onNodeClick dep
+  }, [data, width, height, mergeSelection, onNodeClick]);
 
-  // -- Zoom Controls --
-  const handleZoomIn = () => {
-    if (!svgRef.current) return;
-    d3.select(svgRef.current).transition().call(d3.zoom<SVGSVGElement, unknown>().scaleBy, 1.2);
+  const handleZoom = (factor: number) => {
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    d3.select(svgRef.current).transition().duration(300).call(zoomBehaviorRef.current.scaleBy, factor);
   };
-  const handleZoomOut = () => {
-    if (!svgRef.current) return;
-    d3.select(svgRef.current).transition().call(d3.zoom<SVGSVGElement, unknown>().scaleBy, 0.8);
-  };
+  
   const handleCenter = () => {
-      if (!svgRef.current) return;
-      d3.select(svgRef.current).transition().duration(750).call(d3.zoom<SVGSVGElement, unknown>().transform, d3.zoomIdentity);
+      if (!svgRef.current || !zoomBehaviorRef.current) return;
+      d3.select(svgRef.current).transition().duration(750).call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
   };
 
   return (
-    <div ref={wrapperRef} className="relative w-full h-full bg-cyber-black overflow-hidden">
-       {/* Removed bubble/dot gradient. Just clean black/grid */}
+    <div className="relative w-full h-full bg-cyber-black overflow-hidden">
        <div className="absolute inset-0 pointer-events-none opacity-5" 
            style={{ 
              backgroundImage: 'linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px)',
@@ -232,10 +181,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
       <svg ref={svgRef} width={width} height={height} className="w-full h-full block" />
        
        <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-30">
-        <button onClick={handleZoomIn} className="p-2 bg-cyber-panel border border-cyber-border text-cyber-accent hover:bg-cyber-border transition-colors rounded-sm shadow-lg">
+        <button onClick={() => handleZoom(1.2)} className="p-2 bg-cyber-panel border border-cyber-border text-cyber-accent hover:bg-cyber-border transition-colors rounded-sm shadow-lg">
           <ZoomIn size={20} />
         </button>
-        <button onClick={handleZoomOut} className="p-2 bg-cyber-panel border border-cyber-border text-cyber-accent hover:bg-cyber-border transition-colors rounded-sm shadow-lg">
+        <button onClick={() => handleZoom(0.8)} className="p-2 bg-cyber-panel border border-cyber-border text-cyber-accent hover:bg-cyber-border transition-colors rounded-sm shadow-lg">
           <ZoomOut size={20} />
         </button>
         <button onClick={handleCenter} className="p-2 bg-cyber-panel border border-cyber-border text-cyber-accent hover:bg-cyber-border transition-colors rounded-sm shadow-lg">

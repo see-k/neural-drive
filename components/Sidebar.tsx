@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Activity, ShieldCheck, ChevronRight, Zap, Layers } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Layers, ChevronRight } from 'lucide-react';
 import { KnowledgeNode } from '../types';
 import { ChatInterface } from './ChatInterface';
 import { generateSpeech } from '../services/geminiService';
@@ -11,7 +11,6 @@ interface SidebarProps {
   onExpand: () => void;
   onOpenModal: () => void;
   onChildClick: (child: KnowledgeNode) => void;
-  // Removed system control props from here
 }
 
 type Tab = 'data' | 'voice' | 'link';
@@ -91,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-40 flex flex-col pointer-events-none p-4 md:p-6 pl-0">
+    <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-[60] flex flex-col pointer-events-none p-4 md:p-6 pl-0">
       
       {/* HUD Container */}
       <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] hud-panel-t-r overflow-hidden backdrop-blur-md">
@@ -100,20 +99,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="absolute top-0 right-0 w-[150px] h-[2px] bg-cyber-accent"></div>
         <div className="absolute top-0 right-[150px] w-[10px] h-[10px] bg-cyber-accent clip-path-polygon(0 0, 100% 0, 0 100%)"></div>
 
-        {/* Node Header */}
-        <div className="flex justify-between items-start p-6 pb-4 border-b border-cyber-border/50 bg-black/20 mt-2">
-          <div>
-             <div className="flex items-center gap-2 mb-1">
+        {/* Close Button Top Right */}
+        <button 
+          onClick={onClose} 
+          className="absolute top-0 right-0 p-3 bg-cyber-danger/20 hover:bg-cyber-danger text-cyber-danger hover:text-black transition-all z-50 border-b border-l border-cyber-danger"
+          title="Close Panel"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Node Header - Increased spacing */}
+        <div className="flex justify-between items-start p-6 pb-6 pt-12 border-b border-cyber-border/50 bg-black/20">
+          <div className="w-full">
+             <div className="flex items-center gap-2 mb-2">
                <Cpu size={12} className="text-cyber-accent" />
                <span className="text-[10px] font-mono text-cyber-accent tracking-widest uppercase">Target Analysis</span>
              </div>
-             <h2 className="text-2xl font-bold text-white font-mono break-words leading-none tracking-tighter glow-text">
+             <h2 className="text-2xl font-bold text-white font-mono break-words leading-none tracking-tighter glow-text pr-8">
                {node.name.toUpperCase()}
              </h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-cyber-danger transition-colors p-1 border border-transparent hover:border-cyber-danger/30">
-            <X size={20} />
-          </button>
         </div>
 
         {/* Navigation Tabs */}
