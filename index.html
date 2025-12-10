@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neural Dive // System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;400;700;800&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cyber: {
+                black: '#020202',
+                dark: '#080808',
+                panel: '#0f0f11',
+                border: '#2a2a2a',
+                text: '#c0c0c0',
+                accent: '#00f3ff',
+                secondary: '#7000ff',
+                dim: 'rgba(0, 243, 255, 0.05)',
+                danger: '#ff003c',
+                success: '#00ff9f'
+              }
+            },
+            fontFamily: {
+              sans: ['Rajdhani', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            backgroundImage: {
+              'grid-pattern': "linear-gradient(to right, #111 1px, transparent 1px), linear-gradient(to bottom, #111 1px, transparent 1px)",
+            },
+            animation: {
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 8s linear infinite',
+              'glitch': 'glitch 1s linear infinite',
+            },
+            keyframes: {
+              glitch: {
+                '2%, 64%': { transform: 'translate(2px,0) skew(0deg)' },
+                '4%, 60%': { transform: 'translate(-2px,0) skew(0deg)' },
+                '62%': { transform: 'translate(0,0) skew(5deg)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      body {
+        background-color: #020202;
+        color: #e0e0e0;
+        overflow: hidden;
+        cursor: crosshair; /* Custom cursor everywhere */
+      }
+      
+      /* --- HUD SHAPES --- */
+      .hud-panel {
+        clip-path: polygon(
+          0 0, 
+          100% 0, 
+          100% calc(100% - 20px), 
+          calc(100% - 20px) 100%, 
+          0 100%
+        );
+      }
+      .hud-panel-t-r {
+        clip-path: polygon(
+          0 0, 
+          calc(100% - 20px) 0, 
+          100% 20px, 
+          100% 100%, 
+          0 100%
+        );
+      }
+      .hud-btn {
+        clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        transition: all 0.2s ease;
+      }
+      .hud-btn:hover {
+        background-color: rgba(0, 243, 255, 0.15);
+        letter-spacing: 0.1em;
+      }
+
+      /* --- SCROLLBAR --- */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: #050505; border-left: 1px solid #222; }
+      ::-webkit-scrollbar-thumb { background: #333; border: 1px solid #000; }
+      ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+      
+      /* --- SCANLINE & CRT FX --- */
+      .scanline-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        /* Monochrome scanline to avoid red/blue artifacts */
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.03));
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.3;
+      }
+      
+      .glow-text { text-shadow: 0 0 10px rgba(0, 243, 255, 0.6); }
+      .glow-border { box-shadow: 0 0 15px rgba(0, 243, 255, 0.15); }
+
+      /* --- CONTENT STYLING (Wiki/Gemini) --- */
+      .generated-content { font-family: 'Rajdhani', sans-serif; font-weight: 400; font-size: 1.1rem; }
+
+      .generated-content h2, 
+      .generated-content h3 {
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+      }
+      
+      .generated-content h2::before {
+        content: "//";
+        color: #00f3ff;
+        margin-right: 10px;
+        font-weight: 800;
+      }
+      .generated-content h3::before {
+        content: ">>";
+        color: #7000ff;
+        margin-right: 10px;
+        font-size: 0.8em;
+      }
+      
+      .generated-content p { margin-bottom: 1.5rem; line-height: 1.6; color: #b0b0b0; }
+      .generated-content strong { color: #00f3ff; font-weight: 600; }
+      .generated-content ul { padding-left: 1rem; border-left: 1px dashed #333; margin-left: 5px; }
+      .generated-content li { margin-bottom: 0.5rem; color: #a0a0a0; padding-left: 1rem; position: relative; }
+      .generated-content li::before { content: "•"; color: #00f3ff; position: absolute; left: -5px; }
+
+      /* Wikipedia Image Integration */
+      .generated-content img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #333;
+        margin: 1.5rem 0;
+        filter: grayscale(100%) contrast(1.1) brightness(0.8);
+        transition: all 0.5s ease;
+        opacity: 0.8;
+      }
+      .generated-content img:hover {
+        filter: grayscale(0%) contrast(1) brightness(1);
+        border-color: #00f3ff;
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+      }
+
+      /* Wikipedia Tables */
+      .generated-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        font-size: 0.9em;
+        font-family: 'JetBrains Mono', monospace;
+        border: 1px solid #333;
+      }
+      .generated-content th {
+        background: rgba(0, 243, 255, 0.1);
+        color: #00f3ff;
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #00f3ff;
+        text-transform: uppercase;
+      }
+      .generated-content td {
+        padding: 10px;
+        border-bottom: 1px solid #222;
+        color: #ccc;
+      }
+      .generated-content tr:hover td { background: rgba(255, 255, 255, 0.05); }
+
+      /* Wiki Cleanup */
+      .generated-content .mw-editsection, .generated-content .infobox, .generated-content .hatnote, 
+      .generated-content .navbox, .generated-content .metadata, .generated-content .reference, 
+      .generated-content .mw-jump-link, .generated-content .reflist { display: none !important; }
+
+      .generated-content a { color: #00f3ff; text-decoration: none; border-bottom: 1px dotted #00f3ff; }
+      .generated-content a:hover { background: #00f3ff; color: #000; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "d3": "https://aistudiocdn.com/d3@^7.9.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <div class="scanline-overlay"></div>
+  </body>
+</html>
