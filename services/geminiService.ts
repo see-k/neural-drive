@@ -39,14 +39,17 @@ export const fetchSubTopics = async (
   const model = "gemini-2.5-flash"; 
 
   const contextPrompt = parentContext 
-    ? `The parent topic is "${parentContext}".` 
-    : "This is a root topic.";
+    ? `CONTEXT: The user is currently exploring the parent topic "${parentContext}". The topic "${topic}" is a specific branch within "${parentContext}".` 
+    : "CONTEXT: This is a root topic.";
 
   const prompt = `
     ${contextPrompt}
-    Analyze the topic "${topic}".
-    Break this down into 3 to 5 distinct, fundamental sub-branches or deeper concepts that one must understand to master "${topic}".
-    Focus on structural knowledge or fascinating specific niches.
+    TASK: Analyze the sub-topic "${topic}".
+    ACTION: Break this down into 3 to 5 distinct, fundamental sub-branches or deeper concepts.
+    CONSTRAINT: The sub-branches MUST be strictly relevant to "${topic}" specifically as it relates to "${parentContext || 'general knowledge'}". 
+    - Avoid generic sub-topics.
+    - Focus on structural knowledge or fascinating specific niches relevant to the context.
+    - If the context is specific (e.g. "SpaceX"), do not give generic results for "Rockets", give results specific to SpaceX Rockets.
     Return strictly JSON.
   `;
 

@@ -252,7 +252,7 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
   return (
     <div className="relative w-full h-full bg-transparent overflow-hidden">
       <style>{`
-        @keyframes flow { to { stroke-dashoffset: -20; } }
+        @keyframes flow { to { stroke-dashoffset: -15; } }
         .link-flow { animation: flow 1s linear infinite; }
       `}</style>
       
@@ -277,4 +277,4 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       </div>
     </div>
   );
-};
+}

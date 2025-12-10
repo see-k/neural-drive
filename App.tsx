@@ -12,6 +12,19 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 type ViewMode = 'tree' | 'network';
 
+// Helper to find a node by ID in the tree
+const findNodeById = (node: KnowledgeNode | null, id: string): KnowledgeNode | null => {
+    if (!node) return null;
+    if (node.id === id) return node;
+    if (node.children) {
+        for (const child of node.children) {
+            const found = findNodeById(child, id);
+            if (found) return found;
+        }
+    }
+    return null;
+};
+
 // -- COMPONENT: 3D Grid Background (Moving) --
 const BackgroundGrid = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -135,17 +148,7 @@ const App: React.FC = () => {
       
       // Update selected node ref if it was updated
       if (selectedNode && selectedNode.id === nodeId) {
-         const findNode = (n: KnowledgeNode): KnowledgeNode | null => {
-            if (n.id === nodeId) return n;
-            if (n.children) {
-              for (const child of n.children) {
-                const found = findNode(child);
-                if (found) return found;
-              }
-            }
-            return null;
-         };
-         const updatedSelected = findNode(newRoot);
+         const updatedSelected = findNodeById(newRoot, nodeId);
          if (updatedSelected) {
            setSelectedNode(updatedSelected);
          }
@@ -185,8 +188,15 @@ const App: React.FC = () => {
 
     updateTree(node.id, n => ({ ...n, isLoading: true }));
 
+    // Context Logic: Find the parent node to provide context
+    let parentContext = "";
+    if (node.parentId && rootNode) {
+       const parent = findNodeById(rootNode, node.parentId);
+       if (parent) parentContext = parent.name;
+    }
+
     try {
-      const subtopics = await fetchSubTopics(node.name, node.parentId ? "parent context" : undefined);
+      const subtopics = await fetchSubTopics(node.name, parentContext);
       const newChildren: KnowledgeNode[] = subtopics.map(t => ({
         id: generateId(),
         name: t.title,
@@ -208,7 +218,7 @@ const App: React.FC = () => {
       console.error(e);
       updateTree(node.id, n => ({ ...n, isLoading: false }));
     }
-  }, [loadNodeContent, updateTree]);
+  }, [loadNodeContent, updateTree, rootNode]);
 
   const handleNodeClick = useCallback((node: KnowledgeNode) => {
     // MERGE MODE LOGIC

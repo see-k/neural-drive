@@ -46,7 +46,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setAudioError(null);
     
     // CRITICAL FIX: Initialize/Resume AudioContext immediately on user interaction
-    // Waiting for the async generateSpeech call can cause the browser to block audio
     if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
@@ -59,8 +58,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
 
     let textToSpeak = node.detailedContent ? stripHtml(node.detailedContent) : node.description;
-    
-    // Clean text further to remove citations brackets like [1], [2] often found in Wiki
     textToSpeak = textToSpeak.replace(/\[\d+\]/g, '');
     
     if (textToSpeak.length > 800) textToSpeak = textToSpeak.substring(0, 800) + "...";
@@ -107,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* HUD Container - Sleek Rectangular Panel */}
       <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-md">
         
-        {/* Top Tech Bar (Replaces tacky close button) */}
+        {/* Top Tech Bar */}
         <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-cyber-border/30 select-none">
             <div className="flex items-center gap-3 opacity-60">
                 <div className="flex gap-0.5">
@@ -132,7 +129,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Node Header */}
         <div className="p-6 pb-4 relative overflow-hidden bg-gradient-to-b from-black/20 to-transparent">
-           {/* Background Deco */}
            <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
               <Cpu size={120} />
            </div>
@@ -170,7 +166,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* DATA TAB */}
           {activeTab === 'data' && (
              <div className="h-full overflow-y-auto custom-scrollbar p-6 flex flex-col">
-                {/* Status Indicators */}
                 <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] font-mono">
                    <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
                       <span className="text-gray-500">NODE_STATUS</span>
@@ -186,7 +181,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                    </div>
                 </div>
 
-                {/* Main Image */}
                 <div className="mb-6 w-full aspect-video bg-black border border-cyber-border overflow-hidden relative group cursor-pointer shrink-0" onClick={onOpenModal}>
                   {node.imageUrl ? (
                     <>
@@ -202,11 +196,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                        <span className="text-[10px] font-mono uppercase opacity-50">{node.isContentLoading ? 'Rendering...' : 'No Visual'}</span>
                     </div>
                   )}
-                  {/* Overlay scanline */}
                   <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
                 </div>
 
-                {/* Text Content */}
                 <div className="flex-1 relative">
                   <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-cyber-border to-transparent"></div>
                   <div className="pl-4">
@@ -230,7 +222,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
 
-                {/* Sources */}
                 {node.sources && node.sources.length > 0 && (
                   <div className="mt-6 pt-4 border-t border-cyber-border/30">
                     <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-2 flex items-center gap-2">
@@ -252,7 +243,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 )}
 
-                 {/* Sub-Nodes Cards */}
                  {node.children && node.children.length > 0 && (
                    <div className="mt-8">
                       <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-3 flex items-center gap-2">
@@ -265,7 +255,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onClick={() => onChildClick(child)} 
                             className="group relative text-left bg-black border border-cyber-border hover:border-cyber-accent p-3 transition-all hover:bg-cyber-accent/5 overflow-hidden"
                           >
-                             {/* Card Decoration */}
                              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                              
@@ -296,7 +285,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                </div>
 
                <div className="w-32 h-32 flex items-center justify-center relative z-10 mb-6">
-                  {/* Hexagon shape roughly - Added pointer-events-none to prevent blocking click */}
                   <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-45 transition-all duration-300 pointer-events-none ${isPlaying ? 'scale-110' : 'scale-100'}`}></div>
                   <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-12 transition-all duration-300 opacity-50 pointer-events-none ${isPlaying ? 'scale-125' : 'scale-100'}`}></div>
                   
@@ -318,15 +306,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                  {audioError ? <span className="text-cyber-danger">{audioError}</span> : `Initiating neural text-to-speech protocol for subject.`}
                </p>
 
-               {/* Fake visualizer */}
-               <div className="mt-8 flex items-end justify-center gap-[2px] h-12">
-                  {Array.from({ length: 30 }).map((_, i) => (
+               {/* Live Visualizer */}
+               <div className="mt-8 flex items-end justify-center gap-[2px] h-12 w-full max-w-[200px] overflow-hidden">
+                  <style>{`
+                    @keyframes equalizer {
+                      0% { height: 10%; opacity: 0.3; }
+                      50% { height: 100%; opacity: 1; }
+                      100% { height: 10%; opacity: 0.3; }
+                    }
+                  `}</style>
+                  {Array.from({ length: 20 }).map((_, i) => (
                     <div 
                       key={i} 
-                      className="w-1 bg-cyber-accent/80"
+                      className="w-1 bg-cyber-accent"
                       style={{ 
-                        height: isPlaying ? `${Math.random() * 100}%` : '2px',
-                        transition: 'height 0.1s ease'
+                        height: isPlaying ? '50%' : '10%', 
+                        animation: isPlaying ? `equalizer ${0.4 + Math.random() * 0.5}s ease-in-out infinite` : 'none',
+                        animationDelay: `-${Math.random()}s`,
+                        transition: 'height 0.2s ease, opacity 0.2s ease'
                       }}
                     ></div>
                   ))}
