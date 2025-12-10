@@ -103,10 +103,6 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
       .append('g')
       .attr('class', 'node')
       .attr('transform', (d) => `translate(${d.parent ? d.parent.y : d.y},${d.parent ? d.parent.x : d.x})`)
-      .on('click', (event, d) => {
-        event.stopPropagation();
-        onNodeClick(d.data);
-      })
       .style('cursor', 'pointer');
 
     // 1. Hexagon Shape
@@ -150,6 +146,12 @@ export const MindMap: React.FC<MindMapProps> = ({ data, onNodeClick, width, heig
 
     // --- UPDATE ---
     const nodeUpdate = nodes.merge(nodeEnter as any);
+
+    // Re-attach click handler to ensure latest closure (specifically for isMergeMode) is used
+    nodeUpdate.on('click', (event, d) => {
+      event.stopPropagation();
+      onNodeClick(d.data);
+    });
 
     nodeUpdate.transition().duration(500)
       .attr('transform', (d) => `translate(${d.y},${d.x})`);

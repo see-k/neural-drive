@@ -90,44 +90,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-[60] flex flex-col pointer-events-none p-4 md:p-6 pl-0">
+    <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-[60] flex flex-col pointer-events-none p-0 md:p-6 md:pl-0">
       
-      {/* HUD Container */}
-      <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] hud-panel-t-r overflow-hidden backdrop-blur-md">
+      {/* HUD Container - Sleek Rectangular Panel */}
+      <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-md">
         
-        {/* Decorative Lines */}
-        <div className="absolute top-0 right-0 w-[150px] h-[2px] bg-cyber-accent"></div>
-        <div className="absolute top-0 right-[150px] w-[10px] h-[10px] bg-cyber-accent clip-path-polygon(0 0, 100% 0, 0 100%)"></div>
+        {/* Top Tech Bar (Replaces tacky close button) */}
+        <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-cyber-border/30 select-none">
+            <div className="flex items-center gap-3 opacity-60">
+                <div className="flex gap-0.5">
+                   <div className="w-1 h-1 bg-cyber-accent rounded-full"></div>
+                   <div className="w-1 h-1 bg-cyber-accent/50 rounded-full"></div>
+                   <div className="w-1 h-1 bg-cyber-accent/20 rounded-full"></div>
+                </div>
+                <span className="text-[8px] font-mono text-cyber-accent tracking-widest uppercase">
+                  NET.ID: {node.id.substring(0,6).toUpperCase()}
+                </span>
+            </div>
+            
+            <button 
+               onClick={onClose}
+               className="group flex items-center gap-2 px-2 py-1 hover:bg-white/5 transition-all border border-transparent hover:border-cyber-danger/30 rounded-sm"
+               title="Close Panel"
+            >
+               <span className="text-[8px] font-mono text-gray-500 uppercase group-hover:text-cyber-danger transition-colors">Terminate</span>
+               <X size={14} className="text-gray-500 group-hover:text-cyber-danger transition-colors" />
+            </button>
+        </div>
 
-        {/* Close Button Top Right */}
-        <button 
-          onClick={onClose} 
-          className="absolute top-0 right-0 p-3 bg-cyber-danger/20 hover:bg-cyber-danger text-cyber-danger hover:text-black transition-all z-50 border-b border-l border-cyber-danger"
-          title="Close Panel"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Node Header - Increased spacing */}
-        <div className="flex justify-between items-start p-6 pb-6 pt-12 border-b border-cyber-border/50 bg-black/20">
-          <div className="w-full">
-             <div className="flex items-center gap-2 mb-2">
-               <Cpu size={12} className="text-cyber-accent" />
-               <span className="text-[10px] font-mono text-cyber-accent tracking-widest uppercase">Target Analysis</span>
-             </div>
-             <h2 className="text-2xl font-bold text-white font-mono break-words leading-none tracking-tighter glow-text pr-8">
-               {node.name.toUpperCase()}
-             </h2>
-          </div>
+        {/* Node Header */}
+        <div className="p-6 pb-4 relative overflow-hidden bg-gradient-to-b from-black/20 to-transparent">
+           {/* Background Deco */}
+           <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
+              <Cpu size={120} />
+           </div>
+           
+           <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-[9px] font-mono text-cyber-accent/80 border border-cyber-accent/30 px-1.5 py-0.5 bg-cyber-accent/5 uppercase tracking-widest">
+                 Target Analysis
+              </span>
+              <div className="h-[1px] w-12 bg-cyber-accent/30"></div>
+           </div>
+           
+           <h2 className="text-3xl font-bold text-white font-mono break-words leading-[0.9] tracking-tighter drop-shadow-[0_0_10px_rgba(0,0,0,0.5)] relative z-10">
+             {node.name.toUpperCase()}
+           </h2>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex px-6 gap-1 bg-black/40 pt-2">
+        <div className="flex px-6 gap-1 bg-black/20 pt-2 border-b border-cyber-border/20">
           {['data', 'voice', 'link'].map((t) => (
             <button 
                key={t}
                onClick={() => setActiveTab(t as Tab)}
-               className={`flex-1 pb-2 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-t-2 ${activeTab === t ? 'border-cyber-accent text-white bg-white/5' : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-white/5'}`}
+               className={`flex-1 pb-2 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-b-2 ${activeTab === t ? 'border-cyber-accent text-white' : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-white/5'}`}
             >
               {t === 'data' && <FileText size={12} />}
               {t === 'voice' && <Mic size={12} />}
@@ -144,13 +160,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
              <div className="h-full overflow-y-auto custom-scrollbar p-6 flex flex-col">
                 {/* Status Indicators */}
                 <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] font-mono">
-                   <div className="bg-black border border-cyber-border p-2 flex items-center justify-between">
+                   <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
                       <span className="text-gray-500">NODE_STATUS</span>
                       <span className={node.isLoading ? 'text-cyber-danger animate-pulse' : 'text-cyber-success'}>
                         {node.isLoading ? 'BUSY' : 'IDLE'}
                       </span>
                    </div>
-                   <div className="bg-black border border-cyber-border p-2 flex items-center justify-between">
+                   <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
                       <span className="text-gray-500">DATA_LINK</span>
                       <span className={node.isContentLoading ? 'text-purple-400 animate-pulse' : 'text-cyber-accent'}>
                         {node.isContentLoading ? 'FETCHING' : 'STABLE'}
@@ -164,14 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <>
                       <img src={node.imageUrl} alt={node.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105 filter grayscale contrast-125" />
                       <div className="absolute inset-0 bg-cyber-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <div className="absolute bottom-2 right-2 bg-black/80 text-cyber-accent p-1 text-[10px] border border-cyber-accent">
-                         <Maximize2 size={12} />
+                      <div className="absolute bottom-2 right-2 bg-black/80 text-cyber-accent p-1 text-[10px] border border-cyber-accent flex items-center gap-1">
+                         <Maximize2 size={10} /> MAXIMIZE
                       </div>
                     </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-cyber-border gap-2">
                        {node.isContentLoading ? <Loader2 className="animate-spin text-cyber-accent" size={24} /> : <ImageIcon size={24} />}
-                       <span className="text-[10px] font-mono uppercase">{node.isContentLoading ? 'Rendering...' : 'No Visual'}</span>
+                       <span className="text-[10px] font-mono uppercase opacity-50">{node.isContentLoading ? 'Rendering...' : 'No Visual'}</span>
                     </div>
                   )}
                   {/* Overlay scanline */}

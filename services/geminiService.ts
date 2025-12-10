@@ -96,58 +96,9 @@ export const fetchSynthesis = async (topicA: string, topicB: string): Promise<Su
 }
 
 export const generateNodeContent = async (topic: string): Promise<NodeContentResponse> => {
-  // Parallel execution: Text content and Image generation
-  
-  const contentPromise = (async () => {
-    try {
-      // 1. Try fetching from Wikipedia first
-      const wikiData = await fetchWikipediaData(topic);
-      
-      if (wikiData) {
-        return {
-          content: wikiData.content,
-          sources: [{ title: `Wikipedia: ${wikiData.title}`, uri: wikiData.url }]
-        };
-      }
-
-      // 2. Fallback to Gemini if no Wiki page found
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Write a comprehensive, deep, and structured encyclopedia article about "${topic}".
-        
-        Requirements:
-        1. Write in clear, engaging, fact-based prose suitable for a deep-dive learning tool.
-        2. Structure the content using SEMANTIC HTML tags: <h3> for section headers, <p> for paragraphs, <ul>/<li> for lists, and <strong> for key terms.
-        3. DO NOT use markdown.
-        4. Include these specific sections:
-           - Overview: A high-level summary.
-           - Origins/History: How this came to be.
-           - Core Concepts/Mechanisms: How it works or what defines it.
-           - Significance/Implications: Why it matters today or in the future.
-        5. Length: Approximately 400-500 words.
-        6. Use the search tool to verify specific dates, names, and facts.`,
-        config: {
-          tools: [{ googleSearch: {} }],
-        }
-      });
-      
-      // Extract sources from grounding metadata
-      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
-        ?.map(chunk => chunk.web ? { title: chunk.web.title || "External Source", uri: chunk.web.uri || "#" } : null)
-        .filter((s): s is { title: string; uri: string } => s !== null) || [];
-
-      // Deduplicate sources by URI
-      const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
-
-      return { content: response.text || "Content generation failed.", sources: uniqueSources };
-
-    } catch (e) {
-      console.error("Content Gen Error:", e);
-      return { content: "Data stream unavailable.", sources: [] };
-    }
-  })();
-
-  const imagePromise = (async () => {
+  // 1. Kick off Image Generation (AI) in background as fallback/parallel
+  // We do this concurrently to save time, but will discard if Wiki has a good image.
+  const aiImagePromise = (async () => {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
@@ -172,9 +123,74 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
     }
   })();
 
-  const [textData, imageUrl] = await Promise.all([contentPromise, imagePromise]);
+  // 2. Fetch Content (Wiki or AI Fallback)
+  // Define structure for the content data we need
+  let contentData: { content: string, sources: {title:string, uri:string}[], imageUrl?: string } = {
+      content: "",
+      sources: [],
+      imageUrl: undefined
+  };
 
-  return { content: textData.content, imageUrl, sources: textData.sources };
+  try {
+    // Try fetching from Wikipedia first
+    const wikiData = await fetchWikipediaData(topic);
+    
+    if (wikiData) {
+      contentData = {
+        content: wikiData.content,
+        imageUrl: wikiData.imageUrl,
+        sources: [{ title: `Wikipedia: ${wikiData.title}`, uri: wikiData.url }]
+      };
+    } else {
+      // Fallback to Gemini Text Generation if no Wiki page found
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Write a comprehensive, deep, and structured encyclopedia article about "${topic}".
+        
+        Requirements:
+        1. Write in clear, engaging, fact-based prose suitable for a deep-dive learning tool.
+        2. Structure the content using SEMANTIC HTML tags: <h3> for section headers, <p> for paragraphs, <ul>/<li> for lists, and <strong> for key terms.
+        3. DO NOT use markdown.
+        4. Include these specific sections:
+           - Overview: A high-level summary.
+           - Origins/History: How this came to be.
+           - Core Concepts/Mechanisms: How it works or what defines it.
+           - Significance/Implications: Why it matters today or in the future.
+        5. Length: Approximately 400-500 words.
+        6. Use the search tool to verify specific dates, names, and facts.`,
+        config: {
+          tools: [{ googleSearch: {} }],
+        }
+      });
+      
+      // Extract sources
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
+        ?.map(chunk => chunk.web ? { title: chunk.web.title || "External Source", uri: chunk.web.uri || "#" } : null)
+        .filter((s): s is { title: string; uri: string } => s !== null) || [];
+
+      // Deduplicate sources
+      const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
+
+      contentData = { 
+          content: response.text || "Content generation failed.", 
+          sources: uniqueSources,
+          imageUrl: undefined // AI text gen doesn't give images
+      };
+    }
+
+  } catch (e) {
+    console.error("Content Gen Error:", e);
+    contentData.content = "Data stream unavailable.";
+  }
+
+  // 3. Resolve Final Image
+  // If Wiki provided an image, use it. If not, wait for AI generation.
+  let finalImageUrl = contentData.imageUrl;
+  if (!finalImageUrl) {
+     finalImageUrl = await aiImagePromise;
+  }
+
+  return { content: contentData.content, imageUrl: finalImageUrl, sources: contentData.sources };
 };
 
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
