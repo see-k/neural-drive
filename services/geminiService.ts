@@ -23,6 +23,15 @@ const responseSchema: Schema = {
   },
 };
 
+const synthesisSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING, description: "The name of the synthesized concept." },
+    description: { type: Type.STRING, description: "How these two topics combine." }
+  },
+  required: ["title", "description"]
+};
+
 export const fetchSubTopics = async (
   topic: string,
   parentContext?: string
@@ -62,6 +71,29 @@ export const fetchSubTopics = async (
     return [];
   }
 };
+
+export const fetchSynthesis = async (topicA: string, topicB: string): Promise<SubTopicResponse | null> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Find the creative intersection, synthesis, or conflict between "${topicA}" and "${topicB}". 
+      Create a new concept name (Title) and brief description that bridges these two.
+      Example: If inputs are "Biology" and "Technology", output "Bioinformatics" or "Cybernetics".`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: synthesisSchema,
+        temperature: 0.7,
+      }
+    });
+
+    const text = response.text;
+    if (!text) return null;
+    return JSON.parse(text) as SubTopicResponse;
+  } catch (e) {
+    console.error("Synthesis Error", e);
+    return null;
+  }
+}
 
 export const generateNodeContent = async (topic: string): Promise<NodeContentResponse> => {
   // Parallel execution: Text content and Image generation

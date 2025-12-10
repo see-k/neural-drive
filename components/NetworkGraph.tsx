@@ -8,11 +8,15 @@ interface NetworkGraphProps {
   onNodeClick: (node: KnowledgeNode) => void;
   width: number;
   height: number;
+  mergeSelection?: KnowledgeNode[]; // New prop
 }
 
-export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, width, height }) => {
+export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, width, height, mergeSelection = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Extract IDs
+  const mergeIds = new Set(mergeSelection.map(n => n.id));
 
   useEffect(() => {
     if (!data || !svgRef.current) return;
@@ -100,7 +104,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
               .attr("stroke-width", 1.5);
 
           d3.select(this).select("circle")
-             .attr("stroke", (n: any) => n.data.isLoading ? '#ff2a6d' : '#00f3ff')
+             .attr("stroke", (n: any) => {
+                 if (mergeIds.has(n.data.id)) return '#f59e0b';
+                 return n.data.isLoading ? '#ff2a6d' : '#00f3ff';
+             })
              .attr("fill", "#000")
              .attr("r", 20);
              
@@ -114,7 +121,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
     nodeGroup.append("circle")
       .attr("r", 20)
       .attr("fill", "#000")
-      .attr("stroke", (d) => d.data.isLoading ? '#ff2a6d' : '#00f3ff')
+      .attr("stroke", (d) => {
+          if (mergeIds.has(d.data.id)) return '#f59e0b'; // Amber
+          return d.data.isLoading ? '#ff2a6d' : '#00f3ff';
+      })
       .attr("stroke-width", 2)
       .attr("class", "cursor-pointer transition-all duration-300")
       .on("click", (event, d) => {
@@ -194,7 +204,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, w
       d.fy = null;
     }
 
-  }, [data, width, height]);
+  }, [data, width, height, mergeSelection, onNodeClick]); // Added onNodeClick dep
 
   // -- Zoom Controls --
   const handleZoomIn = () => {

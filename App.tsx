@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity } from 'lucide-react';
+import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity, GitMerge, Zap } from 'lucide-react';
 import { MindMap } from './components/MindMap';
 import { NetworkGraph } from './components/NetworkGraph';
 import { ContentModal } from './components/ContentModal';
 import { Sidebar } from './components/Sidebar';
-import { fetchSubTopics, generateNodeContent } from './services/geminiService';
+import { fetchSubTopics, generateNodeContent, fetchSynthesis } from './services/geminiService';
 import { KnowledgeNode } from './types';
 
 // Simple UUID generator
@@ -83,6 +83,11 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
+  
+  // Merge Mode State
+  const [isMergeMode, setIsMergeMode] = useState(false);
+  const [mergeSelection, setMergeSelection] = useState<KnowledgeNode[]>([]);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -128,6 +133,7 @@ const App: React.FC = () => {
 
       const newRoot = traverse(prevRoot);
       
+      // Update selected node ref if it was updated
       if (selectedNode && selectedNode.id === nodeId) {
          const findNode = (n: KnowledgeNode): KnowledgeNode | null => {
             if (n.id === nodeId) return n;
@@ -148,7 +154,7 @@ const App: React.FC = () => {
     });
   }, [selectedNode]);
 
-  const loadNodeContent = async (node: KnowledgeNode) => {
+  const loadNodeContent = useCallback(async (node: KnowledgeNode) => {
     if (node.detailedContent || node.isContentLoading) return;
 
     updateTree(node.id, n => ({ ...n, isContentLoading: true }));
@@ -166,9 +172,9 @@ const App: React.FC = () => {
       console.error("Failed to load node content", e);
       updateTree(node.id, n => ({ ...n, isContentLoading: false }));
     }
-  };
+  }, [updateTree]);
 
-  const expandNode = async (node: KnowledgeNode) => {
+  const expandNode = useCallback(async (node: KnowledgeNode) => {
     loadNodeContent(node);
 
     if (node.children && node.children.length > 0) {
@@ -202,9 +208,24 @@ const App: React.FC = () => {
       console.error(e);
       updateTree(node.id, n => ({ ...n, isLoading: false }));
     }
-  };
+  }, [loadNodeContent, updateTree]);
 
-  const handleNodeClick = (node: KnowledgeNode) => {
+  const handleNodeClick = useCallback((node: KnowledgeNode) => {
+    // MERGE MODE LOGIC
+    if (isMergeMode) {
+      if (mergeSelection.find(n => n.id === node.id)) {
+        // Deselect
+        setMergeSelection(prev => prev.filter(n => n.id !== node.id));
+      } else {
+        // Select (max 2)
+        if (mergeSelection.length < 2) {
+          setMergeSelection(prev => [...prev, node]);
+        }
+      }
+      return;
+    }
+
+    // STANDARD NAVIGATION LOGIC
     if (!selectedNode || selectedNode.id !== node.id) {
        setSelectedNode(node);
        if (!node.detailedContent && !node.isContentLoading) {
@@ -214,6 +235,53 @@ const App: React.FC = () => {
         if (node.children && node.children.length > 0) {
             updateTree(node.id, n => ({ ...n, isExpanded: !n.isExpanded }));
         }
+    }
+  }, [isMergeMode, mergeSelection, selectedNode, updateTree, loadNodeContent]);
+
+  const toggleMergeMode = () => {
+    setIsMergeMode(!isMergeMode);
+    setMergeSelection([]);
+  };
+
+  const executeSynthesis = async () => {
+    if (mergeSelection.length !== 2) return;
+    setIsSynthesizing(true);
+    const [nodeA, nodeB] = mergeSelection;
+
+    try {
+      const result = await fetchSynthesis(nodeA.name, nodeB.name);
+      if (result) {
+        // We will append the new node to the second selected node for now, 
+        // to keep the tree structure valid.
+        const targetNode = nodeB;
+        
+        const newNode: KnowledgeNode = {
+          id: generateId(),
+          name: result.title,
+          description: result.description,
+          parentId: targetNode.id,
+          children: [],
+          isExpanded: false,
+          isLoading: false
+        };
+
+        // Update tree
+        updateTree(targetNode.id, n => ({
+          ...n,
+          isExpanded: true,
+          children: [...(n.children || []), newNode]
+        }));
+
+        // Reset
+        setIsMergeMode(false);
+        setMergeSelection([]);
+        setSelectedNode(newNode);
+        loadNodeContent(newNode);
+      }
+    } catch (e) {
+      console.error("Synthesis failed", e);
+    } finally {
+      setIsSynthesizing(false);
     }
   };
 
@@ -247,30 +315,62 @@ const App: React.FC = () => {
           <div className="h-[1px] w-full bg-gradient-to-r from-cyber-accent to-transparent my-2"></div>
         </div>
 
-        {/* Top Right Status */}
+        {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
         {rootNode && (
-          <div className="pointer-events-auto flex gap-4">
-             <div className="hidden md:flex flex-col items-end font-mono text-[10px] text-gray-500">
-               <span className="flex items-center gap-1 text-cyber-success"><Activity size={10} /> SYSTEM OPTIMAL</span>
-               <span className="flex items-center gap-1"><ShieldCheck size={10} /> ENCRYPTED</span>
-             </div>
+          <div className="pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
              
-             {/* View Toggle */}
-             <div className="flex bg-black/80 border border-cyber-border backdrop-blur-sm rounded-sm overflow-hidden shadow-[0_0_15px_rgba(0,243,255,0.1)]">
-               <button 
-                 onClick={() => setViewMode('tree')}
-                 className={`p-2 px-4 flex items-center gap-2 text-xs font-mono uppercase transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black font-bold shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-               >
-                  <GitGraph size={14} /> Tree
-               </button>
-               <div className="w-[1px] bg-cyber-border"></div>
-               <button 
-                 onClick={() => setViewMode('network')}
-                 className={`p-2 px-4 flex items-center gap-2 text-xs font-mono uppercase transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black font-bold shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-               >
-                  <Network size={14} /> Matrix
-               </button>
-            </div>
+             {/* Mode Toggles */}
+             <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
+                <button 
+                  onClick={() => setViewMode('tree')}
+                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title="Tree View"
+                >
+                   <GitGraph size={16} />
+                </button>
+                <div className="w-[1px] bg-cyber-border"></div>
+                <button 
+                  onClick={() => setViewMode('network')}
+                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title="Network Matrix"
+                >
+                   <Network size={16} />
+                </button>
+             </div>
+
+             {/* Status Divider */}
+             <div className="h-6 w-[1px] bg-cyber-border"></div>
+
+             {/* System Status (Hidden on small screens) */}
+             <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-gray-500 leading-tight">
+                <span className="flex items-center gap-1 text-cyber-success"><Activity size={8} /> OPTIMAL</span>
+                <span className="flex items-center gap-1"><ShieldCheck size={8} /> ENCRYPTED</span>
+             </div>
+
+             {/* Merge Controls */}
+             <div className="flex items-center gap-2">
+                 {isMergeMode && mergeSelection.length === 2 ? (
+                     <button 
+                       onClick={executeSynthesis}
+                       disabled={isSynthesizing}
+                       className="p-2 px-3 bg-amber-500 text-black font-bold text-xs font-mono uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(245,158,11,0.5)] hover:bg-amber-400 transition-all rounded-sm"
+                     >
+                       {isSynthesizing ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
+                       FUSE
+                     </button>
+                 ) : null}
+
+                 <button 
+                    onClick={toggleMergeMode}
+                    className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${
+                      isMergeMode 
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-500' 
+                        : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                    }`}
+                 >
+                    <GitMerge size={14} /> {isMergeMode ? 'CANCEL' : 'COMBINE'}
+                 </button>
+             </div>
           </div>
         )}
       </div>
@@ -327,6 +427,13 @@ const App: React.FC = () => {
       ) : (
         <div className="flex-1 relative animate-in fade-in duration-1000">
           
+          {/* Instructions Overlay for Merge Mode */}
+          {isMergeMode && (
+             <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 bg-black/80 border border-amber-500/50 text-amber-500 px-6 py-2 rounded-full backdrop-blur-md text-xs font-mono tracking-widest animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                SELECT 2 NODES TO SYNTHESIZE [{mergeSelection.length}/2]
+             </div>
+          )}
+
           {/* Visualizations */}
           {viewMode === 'tree' ? (
             <MindMap 
@@ -334,6 +441,7 @@ const App: React.FC = () => {
               width={dimensions.width} 
               height={dimensions.height} 
               onNodeClick={handleNodeClick}
+              mergeSelection={mergeSelection}
             />
           ) : (
             <NetworkGraph 
@@ -341,10 +449,11 @@ const App: React.FC = () => {
               width={dimensions.width} 
               height={dimensions.height} 
               onNodeClick={handleNodeClick}
+              mergeSelection={mergeSelection}
             />
           )}
           
-          {/* Sidebar */}
+          {/* Sidebar - Remains visible in merge mode to provide controls */}
           {selectedNode && (
             <Sidebar 
                node={selectedNode}
@@ -356,7 +465,7 @@ const App: React.FC = () => {
           )}
 
           {/* Modal Overlay */}
-          {isModalOpen && selectedNode && (
+          {isModalOpen && selectedNode && !isMergeMode && (
             <ContentModal node={selectedNode} onClose={() => setIsModalOpen(false)} />
           )}
 

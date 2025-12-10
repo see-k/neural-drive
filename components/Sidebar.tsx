@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, AlertCircle, Globe, Cpu, Wifi } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Activity, ShieldCheck, ChevronRight, Zap, Layers } from 'lucide-react';
 import { KnowledgeNode } from '../types';
 import { ChatInterface } from './ChatInterface';
 import { generateSpeech } from '../services/geminiService';
@@ -11,6 +11,7 @@ interface SidebarProps {
   onExpand: () => void;
   onOpenModal: () => void;
   onChildClick: (child: KnowledgeNode) => void;
+  // Removed system control props from here
 }
 
 type Tab = 'data' | 'voice' | 'link';
@@ -21,7 +22,9 @@ const stripHtml = (html: string) => {
     return tmp.textContent || tmp.innerText || "";
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ node, onClose, onExpand, onOpenModal, onChildClick }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+    node, onClose, onExpand, onOpenModal, onChildClick
+}) => {
   const [activeTab, setActiveTab] = useState<Tab>('data');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
@@ -90,15 +93,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ node, onClose, onExpand, onOpe
   return (
     <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-40 flex flex-col pointer-events-none p-4 md:p-6 pl-0">
       
-      {/* HUD Container - Re-enable pointer events here */}
+      {/* HUD Container */}
       <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] hud-panel-t-r overflow-hidden backdrop-blur-md">
         
         {/* Decorative Lines */}
         <div className="absolute top-0 right-0 w-[150px] h-[2px] bg-cyber-accent"></div>
         <div className="absolute top-0 right-[150px] w-[10px] h-[10px] bg-cyber-accent clip-path-polygon(0 0, 100% 0, 0 100%)"></div>
 
-        {/* Header */}
-        <div className="flex justify-between items-start p-6 pb-4 border-b border-cyber-border/50 bg-black/20">
+        {/* Node Header */}
+        <div className="flex justify-between items-start p-6 pb-4 border-b border-cyber-border/50 bg-black/20 mt-2">
           <div>
              <div className="flex items-center gap-2 mb-1">
                <Cpu size={12} className="text-cyber-accent" />
@@ -216,14 +219,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ node, onClose, onExpand, onOpe
                   </div>
                 )}
 
-                 {/* Quick Nav Chips */}
+                 {/* Sub-Nodes Cards */}
                  {node.children && node.children.length > 0 && (
-                   <div className="mt-6">
-                      <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-2">Linked Sub-Nodes</h4>
-                      <div className="flex flex-wrap gap-1">
+                   <div className="mt-8">
+                      <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-3 flex items-center gap-2">
+                         <Layers size={12} /> Linked Sub-Nodes
+                      </h4>
+                      <div className="flex flex-col gap-2">
                         {node.children.map(child => (
-                          <button key={child.id} onClick={() => onChildClick(child)} className="px-2 py-1 bg-black border border-gray-800 text-[10px] font-mono text-gray-400 hover:border-cyber-accent hover:text-cyber-accent transition-colors">
-                             {child.name}
+                          <button 
+                            key={child.id} 
+                            onClick={() => onChildClick(child)} 
+                            className="group relative text-left bg-black border border-cyber-border hover:border-cyber-accent p-3 transition-all hover:bg-cyber-accent/5 overflow-hidden"
+                          >
+                             {/* Card Decoration */}
+                             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                             
+                             <div className="flex justify-between items-start mb-1 relative z-10">
+                                <span className="font-mono text-xs font-bold text-cyber-accent group-hover:text-white transition-colors uppercase tracking-wider">
+                                  {child.name}
+                                </span>
+                                <ChevronRight size={14} className="text-cyber-accent opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all"/>
+                             </div>
+                             
+                             <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed font-sans opacity-80 group-hover:opacity-100 transition-opacity relative z-10">
+                               {child.description}
+                             </p>
                           </button>
                         ))}
                       </div>

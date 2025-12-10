@@ -12,7 +12,8 @@ export const ContentModal: React.FC<ContentModalProps> = ({ node, onClose }) => 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-black/90 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="absolute inset-0 z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5" onClick={onClose} />
       
-      <div className="relative z-10 w-full max-w-6xl h-full md:h-[90vh] bg-cyber-black border border-cyber-border shadow-[0_0_100px_rgba(0,243,255,0.1)] flex flex-col md:flex-row overflow-hidden hud-panel animate-in zoom-in-95 duration-300">
+      {/* Main Container - Removed solid bg-cyber-black to allow glass effect in children */}
+      <div className="relative z-10 w-full max-w-6xl h-full md:h-[90vh] border border-cyber-border shadow-[0_0_100px_rgba(0,243,255,0.1)] flex flex-col md:flex-row overflow-hidden hud-panel animate-in zoom-in-95 duration-300">
         
         {/* Mobile Header */}
         <div className="md:hidden p-4 border-b border-cyber-border flex justify-between items-center bg-cyber-dark">
@@ -20,14 +21,14 @@ export const ContentModal: React.FC<ContentModalProps> = ({ node, onClose }) => 
           <button onClick={onClose}><X className="text-gray-400" /></button>
         </div>
 
-        {/* Left Col: Visuals & Meta */}
-        <div className="w-full md:w-[350px] bg-cyber-panel border-r border-cyber-border relative flex flex-col shrink-0">
+        {/* Left Col: Visuals & Meta - Glass Effect applied here */}
+        <div className="w-full md:w-[350px] bg-black/40 backdrop-blur-2xl border-r border-cyber-border relative flex flex-col shrink-0">
            {/* Image */}
-           <div className="h-64 md:h-80 w-full relative overflow-hidden group bg-black border-b border-cyber-border">
+           <div className="h-64 md:h-80 w-full relative overflow-hidden group bg-black/50 border-b border-cyber-border">
               {node.imageUrl ? (
                 <>
                   <img src={node.imageUrl} alt={node.name} className="w-full h-full object-cover filter grayscale contrast-125 hover:grayscale-0 transition-all duration-700 opacity-80 group-hover:opacity-100" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-cyber-panel via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                   <div className="absolute top-2 left-2 bg-black/80 text-cyber-accent text-[10px] font-mono px-2 py-1 border border-cyber-accent/30">
                      VISUAL_FEED
                   </div>
@@ -40,23 +41,25 @@ export const ContentModal: React.FC<ContentModalProps> = ({ node, onClose }) => 
               )}
            </div>
 
-           {/* Meta Data Panel */}
-           <div className="p-6 flex-1 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-80">
-              <h1 className="text-3xl md:text-4xl font-bold text-white font-mono leading-none tracking-tighter mb-6 break-words">
+           {/* Meta Data Panel - Glass/Transparent instead of Noise */}
+           <div className="p-6 flex-1 bg-gradient-to-b from-white/5 to-transparent relative">
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/10"></div>
+              
+              <h1 className="text-3xl md:text-4xl font-bold text-white font-mono leading-none tracking-tighter mb-6 break-words drop-shadow-lg">
                 {node.name.toUpperCase()}
               </h1>
               
               <div className="space-y-4">
                  <div className="border-l-2 border-cyber-accent pl-4">
-                    <span className="text-[10px] text-gray-500 font-mono uppercase block mb-1">Classification</span>
+                    <span className="text-[10px] text-gray-400 font-mono uppercase block mb-1">Classification</span>
                     <span className="text-sm text-cyber-accent font-mono">KNOWLEDGE_NODE_TYPE_A</span>
                  </div>
                  <div className="border-l-2 border-gray-700 pl-4">
-                    <span className="text-[10px] text-gray-500 font-mono uppercase block mb-1">Depth Level</span>
-                    <span className="text-sm text-gray-400 font-mono">LAYER {node.children ? 1 : 0}</span>
+                    <span className="text-[10px] text-gray-400 font-mono uppercase block mb-1">Depth Level</span>
+                    <span className="text-sm text-gray-300 font-mono">LAYER {node.children ? 1 : 0}</span>
                  </div>
                  <div className="border-l-2 border-gray-700 pl-4">
-                    <span className="text-[10px] text-gray-500 font-mono uppercase block mb-1">Status</span>
+                    <span className="text-[10px] text-gray-400 font-mono uppercase block mb-1">Status</span>
                     <span className="text-sm text-cyber-success font-mono flex items-center gap-2">
                        <span className="w-2 h-2 bg-cyber-success rounded-full animate-pulse"></span> ONLINE
                     </span>
@@ -65,15 +68,15 @@ export const ContentModal: React.FC<ContentModalProps> = ({ node, onClose }) => 
            </div>
 
            {/* Tech Decoration */}
-           <div className="p-4 border-t border-cyber-border opacity-30">
+           <div className="p-4 border-t border-cyber-border/30 opacity-50">
               <div className="flex gap-1 mb-1">
-                 {Array.from({length: 12}).map((_, i) => <div key={i} className="h-1 w-full bg-cyber-accent"></div>)}
+                 {Array.from({length: 12}).map((_, i) => <div key={i} className="h-1 w-full bg-cyber-accent/30"></div>)}
               </div>
-              <p className="text-[8px] font-mono text-center">SYSTEM ID: {node.id.split('-')[0]}</p>
+              <p className="text-[8px] font-mono text-center text-gray-500">SYSTEM ID: {node.id.split('-')[0]}</p>
            </div>
         </div>
 
-        {/* Right Col: Content */}
+        {/* Right Col: Content - Solid background for readability */}
         <div className="flex-1 flex flex-col bg-cyber-black relative overflow-hidden">
           {/* Top Bar */}
           <div className="h-12 border-b border-cyber-border flex items-center justify-between px-6 bg-cyber-dark/50">
