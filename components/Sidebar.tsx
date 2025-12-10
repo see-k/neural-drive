@@ -44,9 +44,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
     setAudioError(null);
+    
+    // CRITICAL FIX: Initialize/Resume AudioContext immediately on user interaction
+    // Waiting for the async generateSpeech call can cause the browser to block audio
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+        try {
+            await audioContextRef.current.resume();
+        } catch (e) {
+            console.error("Audio resume failed", e);
+        }
+    }
+
     let textToSpeak = node.detailedContent ? stripHtml(node.detailedContent) : node.description;
+    
+    // Clean text further to remove citations brackets like [1], [2] often found in Wiki
+    textToSpeak = textToSpeak.replace(/\[\d+\]/g, '');
+    
     if (textToSpeak.length > 800) textToSpeak = textToSpeak.substring(0, 800) + "...";
-    if (!textToSpeak) {
+    if (!textToSpeak.trim()) {
         setAudioError("DATA CORRUPT: NO AUDIO SOURCE");
         return;
     }
@@ -55,13 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     try {
       const base64Audio = await generateSpeech(textToSpeak);
-      if (base64Audio) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-        }
-        if (audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-        }
+      if (base64Audio && audioContextRef.current) {
         const audioBuffer = await decodeAudioData(base64Audio, audioContextRef.current);
         const source = audioContextRef.current.createBufferSource();
         source.buffer = audioBuffer;
@@ -74,8 +86,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setAudioError("AUDIO STREAM FAILED");
       }
     } catch (e) {
-      console.error(e);
-      setAudioError("CONNECTION ERROR");
+      console.error("Audio Playback Error:", e);
+      setAudioError("CONNECTION/DECODE ERROR");
     } finally {
       setIsAudioLoading(false);
     }
@@ -284,18 +296,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                </div>
 
                <div className="w-32 h-32 flex items-center justify-center relative z-10 mb-6">
-                  {/* Hexagon shape roughly */}
-                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-45 transition-all duration-300 ${isPlaying ? 'scale-110' : 'scale-100'}`}></div>
-                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-12 transition-all duration-300 opacity-50 ${isPlaying ? 'scale-125' : 'scale-100'}`}></div>
+                  {/* Hexagon shape roughly - Added pointer-events-none to prevent blocking click */}
+                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-45 transition-all duration-300 pointer-events-none ${isPlaying ? 'scale-110' : 'scale-100'}`}></div>
+                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-12 transition-all duration-300 opacity-50 pointer-events-none ${isPlaying ? 'scale-125' : 'scale-100'}`}></div>
                   
                   {isAudioLoading ? (
-                    <Loader2 className="animate-spin text-cyber-accent" size={40} />
+                    <Loader2 className="animate-spin text-cyber-accent relative z-20" size={40} />
                   ) : isPlaying ? (
-                    <button onClick={playBriefing} className="hover:scale-110 transition-transform">
+                    <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
                         <Square size={32} className="text-cyber-accent fill-current" />
                     </button>
                   ) : (
-                    <button onClick={playBriefing} className="hover:scale-110 transition-transform">
+                    <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
                         <Play size={32} className="text-cyber-accent ml-1 fill-current" />
                     </button>
                   )}
@@ -349,4 +361,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </div>
   );
-};
+}
