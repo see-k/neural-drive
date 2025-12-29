@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Save, AlertCircle, ExternalLink, Shield } from 'lucide-react';
+import { X, Key, Save, ExternalLink, Shield } from 'lucide-react';
 import { useAPIKeys } from '../contexts/APIKeysContext';
 
 interface SettingsModalProps {

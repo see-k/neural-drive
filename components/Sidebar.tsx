@@ -121,7 +121,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const stopAudio = () => {
     if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); } catch (e) { }
+      try {
+        sourceNodeRef.current.stop();
+      } catch (e) {
+        console.warn('Failed to stop audio source:', e);
+      }
       sourceNodeRef.current = null;
     }
     setIsPlaying(false);
