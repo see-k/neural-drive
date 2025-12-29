@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity, GitMerge, Zap, Mic, MicOff } from 'lucide-react';
+import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity, GitMerge, Zap, Mic, MicOff, Settings } from 'lucide-react';
 import { MindMap } from './components/MindMap';
 import { NetworkGraph } from './components/NetworkGraph';
 import { ContentModal } from './components/ContentModal';
 import { Sidebar } from './components/Sidebar';
 import { VoiceInterface } from './components/VoiceInterface';
+import { SettingsModal } from './components/SettingsModal';
+import { useAPIKeys } from './contexts/APIKeysContext';
 import { fetchSubTopics, generateNodeContent, fetchSynthesis } from './services/geminiService';
 import { KnowledgeNode } from './types';
 
@@ -90,12 +92,14 @@ const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
 };
 
 const App: React.FC = () => {
+  const { isConfigured } = useAPIKeys();
   const [inputValue, setInputValue] = useState('');
   const [rootNode, setRootNode] = useState<KnowledgeNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<KnowledgeNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
 
   // Merge Mode State
@@ -105,6 +109,13 @@ const App: React.FC = () => {
 
   // Voice Mode State
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+
+  // Auto-open settings if not configured
+  useEffect(() => {
+    if (bootComplete && !isConfigured) {
+      setIsSettingsOpen(true);
+    }
+  }, [bootComplete, isConfigured]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -464,6 +475,18 @@ const App: React.FC = () => {
                 {isVoiceEnabled ? <Mic size={14} /> : <MicOff size={14} />}
                 VOICE
               </button>
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className={`p-2 transition-all border rounded-sm ${!isConfigured
+                  ? 'bg-red-500/20 border-red-500 text-red-500 animate-pulse'
+                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                  }`}
+                title="Configuration"
+              >
+                <Settings size={14} />
+              </button>
             </div>
           </div>
         )}
@@ -576,6 +599,11 @@ const App: React.FC = () => {
         onCombine={handleVoiceCombine}
         onBack={handleVoiceBack}
         isEnabled={isVoiceEnabled}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
     </div>
   );

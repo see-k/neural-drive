@@ -39,13 +39,22 @@ interface TTSOptions {
  * Generate speech from text using ElevenLabs TTS
  * Returns base64 encoded audio data
  */
+import { getStoredAPIKeys } from '../contexts/APIKeysContext';
+
+// ... (existing imports or constants if any, but I'm targeting the function start)
+// Actually I need to be careful with imports. I will just add the import at the top and modify the function.
+
+/**
+ * Generate speech from text using ElevenLabs TTS
+ * Returns base64 encoded audio data
+ */
 export const generateElevenLabsSpeech = async (
   text: string,
   options: TTSOptions = {}
 ): Promise<string | undefined> => {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const { elevenLabsApiKey, elevenLabsVoiceId } = getStoredAPIKeys();
 
-  if (!apiKey) {
+  if (!elevenLabsApiKey) {
     console.warn('ElevenLabs API key not configured, falling back to Gemini TTS');
     return undefined;
   }
@@ -56,7 +65,11 @@ export const generateElevenLabsSpeech = async (
     modelId = 'eleven_multilingual_v2'
   } = options;
 
-  const voiceId = VOICE_PROFILES[voiceProfile];
+  // Resolve voice ID: Use custom if provided and profile allows it
+  let voiceId = VOICE_PROFILES[voiceProfile];
+  if (elevenLabsVoiceId && (voiceProfile === 'neural' || voiceProfile === 'custom')) {
+    voiceId = elevenLabsVoiceId;
+  }
 
   const defaultSettings: VoiceSettings = {
     stability: 0.5,
@@ -72,7 +85,7 @@ export const generateElevenLabsSpeech = async (
       headers: {
         'Accept': 'audio/mpeg',
         'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
+        'xi-api-key': elevenLabsApiKey,
       },
       body: JSON.stringify({
         text: text.substring(0, 5000), // ElevenLabs limit

@@ -1,9 +1,16 @@
 import { GoogleGenAI, Type, Schema, Modality } from "@google/genai";
 import { SubTopicResponse, NodeContentResponse } from "../types";
 import { fetchWikipediaData } from "./wikipediaService";
+import { getStoredAPIKeys } from "../contexts/APIKeysContext";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Dynamic Gemini Client Getter
+const getAI = () => {
+  const { geminiApiKey } = getStoredAPIKeys();
+  if (!geminiApiKey) {
+    throw new Error("Gemini API Key is missing. Please configure it in settings.");
+  }
+  return new GoogleGenAI({ apiKey: geminiApiKey });
+};
 
 const responseSchema: Schema = {
   type: Type.ARRAY,
@@ -54,7 +61,7 @@ export const fetchSubTopics = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -77,7 +84,7 @@ export const fetchSubTopics = async (
 
 export const fetchSynthesis = async (topicA: string, topicB: string): Promise<SubTopicResponse | null> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Find the creative intersection, synthesis, or conflict between "${topicA}" and "${topicB}". 
       Create a new concept name (Title) and brief description that bridges these two.
@@ -103,7 +110,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
   // We do this concurrently to save time, but will discard if Wiki has a good image.
   const aiImagePromise = (async () => {
     try {
-      const response = await ai.models.generateContent({
+      const response = await getAI().models.generateContent({
         model: "gemini-2.5-flash-image",
         contents: {
           parts: [
@@ -146,7 +153,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
       };
     } else {
       // Fallback to Gemini Text Generation if no Wiki page found
-      const response = await ai.models.generateContent({
+      const response = await getAI().models.generateContent({
         model: "gemini-2.5-flash",
         contents: `Write a comprehensive, deep, and structured encyclopedia article about "${topic}".
         
@@ -172,7 +179,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
         .filter((s): s is { title: string; uri: string } => s !== null) || [];
 
       // Deduplicate sources
-      const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
+      const uniqueSources = [...new Map(sources.map(s => [s.uri, s])).values()];
 
       contentData = {
         content: response.text || "Content generation failed.",
@@ -198,7 +205,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
 
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
       config: {
@@ -220,7 +227,7 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 };
 
 export const createChat = (topic: string, context: string) => {
-  return ai.chats.create({
+  return getAI().chats.create({
     model: 'gemini-2.5-flash',
     config: {
       systemInstruction: `You are an expert AI tutor specialized in "${topic}". 
@@ -299,7 +306,7 @@ export const processVoiceCommand = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -368,7 +375,7 @@ export const generateVoiceSummary = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -413,7 +420,7 @@ export const generateExplorationSuggestions = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: prompt,
       config: {
