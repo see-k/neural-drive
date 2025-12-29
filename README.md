@@ -122,8 +122,7 @@ neural-drive/
 │   ├── ChatInterface.tsx  # AI chat component
 │   └── ContentModal.tsx   # Full content modal
 ├── services/
-│   ├── geminiService.ts   # Gemini AI integration
-│   ├── vertexAIService.ts # Vertex AI voice processing
+│   ├── geminiService.ts   # Gemini AI + voice processing
 │   ├── elevenLabsService.ts # ElevenLabs TTS
 │   └── wikipediaService.ts # Wikipedia fallback
 ├── utils/

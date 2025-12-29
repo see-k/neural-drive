@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Layers, ChevronRight, Volume2 } from 'lucide-react';
 import { KnowledgeNode } from '../types';
 import { ChatInterface } from './ChatInterface';
-import { generateSpeech } from '../services/geminiService';
+import { generateSpeech, generateVoiceSummary } from '../services/geminiService';
 import { generateElevenLabsSpeech, decodeElevenLabsAudio, VOICE_PROFILES, VoiceProfile } from '../services/elevenLabsService';
-import { generateVoiceSummary } from '../services/vertexAIService';
 import { decodeAudioData } from '../utils/audioUtils';
 
 interface SidebarProps {

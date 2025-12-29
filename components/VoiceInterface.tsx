@@ -11,11 +11,11 @@ import {
     VoiceProfile
 } from '../services/elevenLabsService';
 import {
+    generateSpeech,
     processVoiceCommand,
     generateVoiceSummary,
     generateExplorationSuggestions
-} from '../services/vertexAIService';
-import { generateSpeech } from '../services/geminiService';
+} from '../services/geminiService';
 import { decodeAudioData } from '../utils/audioUtils';
 
 interface VoiceInterfaceProps {
@@ -342,8 +342,8 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                                     key={profile}
                                     onClick={() => setVoiceProfile(profile)}
                                     className={`text-[10px] font-mono px-3 py-1 border transition-all uppercase ${voiceProfile === profile
-                                            ? 'border-cyber-accent bg-cyber-accent/10 text-cyber-accent'
-                                            : 'border-cyber-border text-gray-500 hover:text-white hover:border-white'
+                                        ? 'border-cyber-accent bg-cyber-accent/10 text-cyber-accent'
+                                        : 'border-cyber-border text-gray-500 hover:text-white hover:border-white'
                                         }`}
                                 >
                                     {profile}
@@ -408,10 +408,10 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 {!isExpanded && (
                     <div className="bg-cyber-panel/80 border border-cyber-border backdrop-blur-md px-4 py-2 text-xs font-mono">
                         <span className={`inline-block w-2 h-2 rounded-full mr-2 ${status === 'idle' ? 'bg-gray-500' :
-                                status === 'listening' ? 'bg-cyber-accent animate-pulse' :
-                                    status === 'speaking' ? 'bg-purple-500 animate-pulse' :
-                                        status === 'processing' ? 'bg-yellow-500 animate-pulse' :
-                                            'bg-cyber-danger'
+                            status === 'listening' ? 'bg-cyber-accent animate-pulse' :
+                                status === 'speaking' ? 'bg-purple-500 animate-pulse' :
+                                    status === 'processing' ? 'bg-yellow-500 animate-pulse' :
+                                        'bg-cyber-danger'
                             }`} />
                         <span className="text-gray-400 uppercase tracking-wider">
                             {status === 'idle' ? 'Voice Ready' : status.toUpperCase()}

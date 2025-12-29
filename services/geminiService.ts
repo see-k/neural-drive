@@ -36,10 +36,10 @@ export const fetchSubTopics = async (
   topic: string,
   parentContext?: string
 ): Promise<SubTopicResponse[]> => {
-  const model = "gemini-2.5-flash"; 
+  const model = "gemini-2.5-flash";
 
-  const contextPrompt = parentContext 
-    ? `CONTEXT: The user is currently exploring the parent topic "${parentContext}". The topic "${topic}" is a specific branch within "${parentContext}".` 
+  const contextPrompt = parentContext
+    ? `CONTEXT: The user is currently exploring the parent topic "${parentContext}". The topic "${topic}" is a specific branch within "${parentContext}".`
     : "CONTEXT: This is a root topic.";
 
   const prompt = `
@@ -111,11 +111,11 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
           ],
         },
       });
-      
+
       if (response.candidates?.[0]?.content?.parts) {
         for (const part of response.candidates[0].content.parts) {
           if (part.inlineData && part.inlineData.data) {
-             return `data:image/png;base64,${part.inlineData.data}`;
+            return `data:image/png;base64,${part.inlineData.data}`;
           }
         }
       }
@@ -128,16 +128,16 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
 
   // 2. Fetch Content (Wiki or AI Fallback)
   // Define structure for the content data we need
-  let contentData: { content: string, sources: {title:string, uri:string}[], imageUrl?: string } = {
-      content: "",
-      sources: [],
-      imageUrl: undefined
+  let contentData: { content: string, sources: { title: string, uri: string }[], imageUrl?: string } = {
+    content: "",
+    sources: [],
+    imageUrl: undefined
   };
 
   try {
     // Try fetching from Wikipedia first
     const wikiData = await fetchWikipediaData(topic);
-    
+
     if (wikiData) {
       contentData = {
         content: wikiData.content,
@@ -165,7 +165,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
           tools: [{ googleSearch: {} }],
         }
       });
-      
+
       // Extract sources
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
         ?.map(chunk => chunk.web ? { title: chunk.web.title || "External Source", uri: chunk.web.uri || "#" } : null)
@@ -174,10 +174,10 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
       // Deduplicate sources
       const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
 
-      contentData = { 
-          content: response.text || "Content generation failed.", 
-          sources: uniqueSources,
-          imageUrl: undefined // AI text gen doesn't give images
+      contentData = {
+        content: response.text || "Content generation failed.",
+        sources: uniqueSources,
+        imageUrl: undefined // AI text gen doesn't give images
       };
     }
 
@@ -190,7 +190,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
   // If Wiki provided an image, use it. If not, wait for AI generation.
   let finalImageUrl = contentData.imageUrl;
   if (!finalImageUrl) {
-     finalImageUrl = await aiImagePromise;
+    finalImageUrl = await aiImagePromise;
   }
 
   return { content: contentData.content, imageUrl: finalImageUrl, sources: contentData.sources };
@@ -210,7 +210,7 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
         },
       },
     });
-    
+
     // Extract base64 audio
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   } catch (error) {
@@ -229,4 +229,209 @@ export const createChat = (topic: string, context: string) => {
       Keep answers under 100 words unless asked for more.`,
     }
   });
+};
+
+// =====================================================
+// VOICE PROCESSING FUNCTIONS
+// For ElevenLabs Challenge - AI Partner Catalyst Hackathon
+// =====================================================
+
+const voiceCommandSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    intent: {
+      type: Type.STRING,
+      description: "The detected intent: explore, expand, read, combine, navigate, or unknown"
+    },
+    topic: {
+      type: Type.STRING,
+      description: "The topic or target mentioned in the command, if any"
+    },
+    response: {
+      type: Type.STRING,
+      description: "A brief, natural response to acknowledge the command (10-20 words)"
+    },
+    shouldSpeak: {
+      type: Type.BOOLEAN,
+      description: "Whether the response should be spoken aloud"
+    }
+  },
+  required: ["intent", "response", "shouldSpeak"]
+};
+
+/**
+ * Process a voice command using Gemini AI
+ * Provides natural language understanding for voice navigation
+ */
+export interface ProcessedVoiceCommand {
+  intent: 'explore' | 'expand' | 'read' | 'combine' | 'navigate' | 'unknown';
+  topic?: string;
+  response: string;
+  shouldSpeak: boolean;
+}
+
+export const processVoiceCommand = async (
+  transcript: string,
+  currentTopic?: string
+): Promise<ProcessedVoiceCommand> => {
+  const model = "gemini-2.5-flash";
+
+  const contextInfo = currentTopic
+    ? `The user is currently exploring: "${currentTopic}".`
+    : "The user is at the home screen.";
+
+  const prompt = `
+    ${contextInfo}
+    
+    The user said: "${transcript}"
+    
+    Interpret this as a voice command for a knowledge exploration app.
+    
+    Possible intents:
+    - explore: User wants to explore a new topic
+    - expand: User wants to go deeper into current topic
+    - read: User wants the current content read aloud
+    - combine: User wants to synthesize/merge concepts
+    - navigate: User wants to go back or navigate elsewhere
+    - unknown: Cannot determine intent
+    
+    Respond naturally and helpfully.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: voiceCommandSchema,
+        temperature: 0.3,
+      },
+    });
+
+    const text = response.text;
+    if (!text) {
+      return {
+        intent: 'unknown',
+        response: "I didn't catch that. Could you try again?",
+        shouldSpeak: true,
+      };
+    }
+
+    const result = JSON.parse(text);
+    return {
+      intent: result.intent || 'unknown',
+      topic: result.topic,
+      response: result.response || "Processing your request.",
+      shouldSpeak: result.shouldSpeak ?? true,
+    };
+  } catch (error) {
+    console.error("Voice command processing error:", error);
+    return {
+      intent: 'unknown',
+      response: "Sorry, I encountered an error. Please try again.",
+      shouldSpeak: true,
+    };
+  }
+};
+
+/**
+ * Generate a voice-optimized summary of content
+ * Creates content specifically designed for text-to-speech
+ */
+export const generateVoiceSummary = async (
+  topic: string,
+  content: string
+): Promise<string> => {
+  const model = "gemini-2.5-flash";
+
+  // Truncate content if too long
+  const truncatedContent = content.length > 2000
+    ? content.substring(0, 2000) + "..."
+    : content;
+
+  const prompt = `
+    Create a spoken briefing about "${topic}" based on this content:
+    
+    ${truncatedContent}
+    
+    Requirements:
+    1. Write as if speaking to someone directly
+    2. Use clear, conversational language
+    3. Avoid technical jargon unless explaining it
+    4. Keep it between 100-150 words
+    5. Start with an engaging hook
+    6. End with a thought-provoking question or insight
+    
+    Do NOT use any markdown, bullet points, or special formatting.
+    Write in flowing, natural paragraphs.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+      },
+    });
+
+    return response.text || `Let me tell you about ${topic}.`;
+  } catch (error) {
+    console.error("Voice summary generation error:", error);
+    return `${topic} is a fascinating subject. Unfortunately, I encountered an issue generating the full briefing.`;
+  }
+};
+
+/**
+ * Generate related topics for voice exploration
+ * Suggests what the user might want to explore next
+ */
+export const generateExplorationSuggestions = async (
+  currentTopic: string,
+  exploredTopics: string[]
+): Promise<string[]> => {
+  const model = "gemini-2.5-flash";
+
+  const exploredList = exploredTopics.length > 0
+    ? `Already explored: ${exploredTopics.join(', ')}`
+    : '';
+
+  const prompt = `
+    The user is exploring "${currentTopic}".
+    ${exploredList}
+    
+    Suggest 3 related topics they might want to explore next.
+    
+    Requirements:
+    - Each suggestion should be 2-4 words
+    - Topics should be naturally related but different
+    - Avoid topics already explored
+    - Make them intriguing and specific
+    
+    Return a JSON array of strings.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
+        },
+        temperature: 0.8,
+      },
+    });
+
+    const text = response.text;
+    if (!text) return [];
+
+    return JSON.parse(text) as string[];
+  } catch (error) {
+    console.error("Suggestion generation error:", error);
+    return [];
+  }
 };
