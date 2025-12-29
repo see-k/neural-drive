@@ -82,12 +82,14 @@ export const useAPIKeys = (): APIKeysContextType => {
 // Export a function to get current keys (for use in services)
 export const getStoredAPIKeys = (): APIKeys => {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            return { ...defaultKeys, ...JSON.parse(stored) };
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                return { ...defaultKeys, ...JSON.parse(stored) };
+            }
         }
     } catch (e) {
-        // Ignore
+        console.warn('Failed to retrieve API keys:', e);
     }
 
     return {

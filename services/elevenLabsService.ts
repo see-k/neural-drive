@@ -4,6 +4,8 @@
  * for the AI Partner Catalyst Hackathon - ElevenLabs Challenge
  */
 
+import { getStoredAPIKeys } from '../contexts/APIKeysContext';
+
 // ElevenLabs API configuration
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
@@ -39,8 +41,6 @@ interface TTSOptions {
  * Generate speech from text using ElevenLabs TTS
  * Returns base64 encoded audio data
  */
-import { getStoredAPIKeys } from '../contexts/APIKeysContext';
-
 /**
  * Generate speech from text using ElevenLabs TTS
  * Returns base64 encoded audio data

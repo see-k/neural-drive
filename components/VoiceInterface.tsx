@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Volume2, Radio, Waves, X, Sparkles, Brain, ChevronUp } from 'lucide-react';
+import { Mic, Loader2, Volume2, Waves, X, Sparkles, Brain, ChevronUp } from 'lucide-react';
 import {
     createVoiceRecognition,
     VoiceCommand,
@@ -13,7 +13,6 @@ import {
 import {
     generateSpeech,
     processVoiceCommand,
-    generateVoiceSummary,
     generateExplorationSuggestions
 } from '../services/geminiService';
 import { decodeAudioData } from '../utils/audioUtils';
@@ -192,7 +191,9 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         if (sourceNodeRef.current) {
             try {
                 sourceNodeRef.current.stop();
-            } catch (e) { }
+            } catch (e) {
+                console.warn('Failed to stop audio source:', e);
+            }
             sourceNodeRef.current = null;
         }
         setStatus('idle');
@@ -218,7 +219,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
     if (!isEnabled) return null;
 
-    const isActive = status !== 'idle';
+
 
     return (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 ${isExpanded ? 'w-[500px]' : 'w-auto'}`}>

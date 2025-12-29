@@ -3,7 +3,7 @@ import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare,
 import { KnowledgeNode } from '../types';
 import { ChatInterface } from './ChatInterface';
 import { generateSpeech, generateVoiceSummary } from '../services/geminiService';
-import { generateElevenLabsSpeech, decodeElevenLabsAudio, VOICE_PROFILES, VoiceProfile } from '../services/elevenLabsService';
+import { generateElevenLabsSpeech, decodeElevenLabsAudio } from '../services/elevenLabsService';
 import { decodeAudioData } from '../utils/audioUtils';
 
 interface SidebarProps {
