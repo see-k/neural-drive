@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+  <img src="public/hero.png" alt="Neural Dive Banner" width="100%">
 </div>
 
 # 🧠 Neural Dive
@@ -8,7 +8,8 @@
 >
 > A voice-driven, AI-powered knowledge exploration platform that combines interactive mind mapping with natural voice interaction.
 
-[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Vertex%20AI-4285F4?style=for-the-badge&logo=google-cloud)](https://cloud.google.com/vertex-ai)
+[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Firebase-4285F4?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
+[![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-8E75B2?style=for-the-badge&logo=google-cloud)](https://deepmind.google/technologies/gemini/)
 [![ElevenLabs](https://img.shields.io/badge/ElevenLabs-Voice%20AI-000000?style=for-the-badge)](https://elevenlabs.io/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -31,6 +32,11 @@ This project was built for the **AI Partner Catalyst: Accelerate Innovation** ha
 - **Concept Synthesis**: Merge two topics to discover their intersection
 - **Smart Suggestions**: AI-generated exploration paths based on your interests
 
+### 🔒 Privacy-First Architecture
+- **Bring Your Own Key (BYOK)**: API keys are stored locally in your browser
+- **No Backend Tracking**: Direct connection from client to Google/ElevenLabs APIs
+- **Secure Storage**: Keys can be cleared instantly with a single click
+
 ### 🎨 Cyberpunk Aesthetic
 - **Immersive UI**: HUD-style interfaces with neon accents and smooth animations
 - **Multiple Views**: Switch between tree and network graph visualizations
@@ -39,10 +45,10 @@ This project was built for the **AI Partner Catalyst: Accelerate Innovation** ha
 ## 🛠️ Technology Stack
 
 ### Google Cloud Integration
+- **Firebase Hosting**: Fast, secure global CDN deployment
 - **Gemini 2.5 Flash**: Core AI model for content generation and reasoning
 - **Gemini Image Generation**: AI-generated visual representations
 - **Google Search Grounding**: Fact-verified content with source citations
-- **Vertex AI Ready**: Architecture supports Vertex AI deployment
 
 ### ElevenLabs Integration
 - **Text-to-Speech**: Natural voice synthesis with multiple voice profiles
@@ -58,12 +64,7 @@ This project was built for the **AI Partner Catalyst: Accelerate Innovation** ha
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+
-- A Gemini API key ([Get one here](https://ai.google.dev/))
-- An ElevenLabs API key ([Get one here](https://elevenlabs.io/))
-
-### Installation
+### 1. Installation
 
 ```bash
 # Clone the repository
@@ -73,23 +74,18 @@ cd neural-drive
 # Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your API keys
-
 # Start development server
 npm run dev
 ```
 
-### Environment Variables
+### 2. Configuration
+The app uses a **Settings Modal** for configuration. When you launch the app:
+1. Click the **Settings (⚙️)** icon.
+2. Enter your **Google Gemini API Key** (Required).
+3. Enter your **ElevenLabs API Key** (Optional, for premium voice).
+4. Save configuration.
 
-```env
-# Required: Google Gemini API Key
-GEMINI_API_KEY=your_gemini_api_key
-
-# Optional: ElevenLabs API Key (enhances voice quality)
-ELEVENLABS_API_KEY=your_elevenlabs_api_key
-```
+*Note: Keys are stored in your browser's local storage and are never sent to a backend server.*
 
 ## 🎮 Voice Commands
 
@@ -101,14 +97,6 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key
 | "Combine" | Enter synthesis mode to merge concepts |
 | "Go back" | Navigate to parent topic |
 
-## 📖 How It Works
-
-1. **Start**: Say "Explore quantum physics" or type a topic
-2. **Navigate**: Click nodes or use voice to explore branches
-3. **Learn**: Read AI-generated content with source citations
-4. **Listen**: Toggle voice mode for hands-free learning
-5. **Synthesize**: Combine topics to discover new concepts
-
 ## 🏗️ Project Structure
 
 ```
@@ -119,24 +107,20 @@ neural-drive/
 │   ├── NetworkGraph.tsx   # D3.js force-directed graph
 │   ├── Sidebar.tsx        # Node details panel
 │   ├── VoiceInterface.tsx # Voice control interface
-│   ├── ChatInterface.tsx  # AI chat component
+│   ├── SettingsModal.tsx  # API key configuration
 │   └── ContentModal.tsx   # Full content modal
 ├── services/
 │   ├── geminiService.ts   # Gemini AI + voice processing
 │   ├── elevenLabsService.ts # ElevenLabs TTS
 │   └── wikipediaService.ts # Wikipedia fallback
-├── utils/
-│   └── audioUtils.ts      # Audio processing utilities
+├── contexts/
+│   └── APIKeysContext.tsx # Secure key management
 └── types.ts               # TypeScript definitions
 ```
 
-## 🎥 Demo
-
-[Watch Demo Video](https://youtube.com/your-demo-link)
-
 ## 🌐 Live Demo
 
-[Try Neural Dive](https://your-deployed-url.com)
+[**Try Neural Dive Live**](https://neural-drive.web.app)
 
 ## 📝 License
 
@@ -144,7 +128,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Google Cloud** for Gemini AI and Vertex AI
+- **Google Cloud** for Gemini AI
 - **ElevenLabs** for natural voice synthesis
 - **Devpost** for hosting the hackathon
 
