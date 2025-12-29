@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity, GitMerge, Zap } from 'lucide-react';
+import { BrainCircuit, ChevronRight, Terminal, GitGraph, Network, ShieldCheck, Activity, GitMerge, Zap, Mic, MicOff } from 'lucide-react';
 import { MindMap } from './components/MindMap';
 import { NetworkGraph } from './components/NetworkGraph';
 import { ContentModal } from './components/ContentModal';
 import { Sidebar } from './components/Sidebar';
+import { VoiceInterface } from './components/VoiceInterface';
 import { fetchSubTopics, generateNodeContent, fetchSynthesis } from './services/geminiService';
 import { KnowledgeNode } from './types';
 
@@ -14,15 +15,15 @@ type ViewMode = 'tree' | 'network';
 
 // Helper to find a node by ID in the tree
 const findNodeById = (node: KnowledgeNode | null, id: string): KnowledgeNode | null => {
-    if (!node) return null;
-    if (node.id === id) return node;
-    if (node.children) {
-        for (const child of node.children) {
-            const found = findNodeById(child, id);
-            if (found) return found;
-        }
+  if (!node) return null;
+  if (node.id === id) return node;
+  if (node.children) {
+    for (const child of node.children) {
+      const found = findNodeById(child, id);
+      if (found) return found;
     }
-    return null;
+  }
+  return null;
 };
 
 // -- COMPONENT: 3D Grid Background (Moving) --
@@ -30,7 +31,7 @@ const BackgroundGrid = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
     <div className="absolute inset-0 bg-gradient-to-b from-cyber-black via-transparent to-cyber-black z-10"></div>
     {/* Moving Grid */}
-    <div 
+    <div
       className="absolute inset-0 opacity-20"
       style={{
         backgroundImage: 'linear-gradient(rgba(0, 243, 255, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.3) 1px, transparent 1px)',
@@ -53,7 +54,7 @@ const BackgroundGrid = () => (
 // -- COMPONENT: Boot Sequence --
 const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [text, setText] = useState<string[]>([]);
-  
+
   useEffect(() => {
     const logs = [
       "INITIALIZING NEURAL INTERFACE...",
@@ -62,7 +63,7 @@ const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
       "SECURITY CHECK: BYPASSED",
       "SYSTEM ONLINE."
     ];
-    
+
     let delay = 0;
     logs.forEach((log, i) => {
       delay += Math.random() * 500 + 200;
@@ -79,8 +80,8 @@ const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
     <div className="flex flex-col items-start font-mono text-xs md:text-sm text-cyber-accent uppercase tracking-widest p-8">
       {text.map((t, i) => (
         <div key={i} className="mb-1 flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-300">
-           <span className="text-gray-600">[{new Date().toLocaleTimeString()}]</span>
-           <span>{'>'} {t}</span>
+          <span className="text-gray-600">[{new Date().toLocaleTimeString()}]</span>
+          <span>{'>'} {t}</span>
         </div>
       ))}
       <div className="w-2 h-4 bg-cyber-accent animate-pulse mt-2"></div>
@@ -96,11 +97,14 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
-  
+
   // Merge Mode State
   const [isMergeMode, setIsMergeMode] = useState(false);
   const [mergeSelection, setMergeSelection] = useState<KnowledgeNode[]>([]);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+
+  // Voice Mode State
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -112,7 +116,7 @@ const App: React.FC = () => {
 
   const handleStart = () => {
     if (!inputValue.trim()) return;
-    
+
     const root: KnowledgeNode = {
       id: generateId(),
       name: inputValue,
@@ -121,7 +125,7 @@ const App: React.FC = () => {
       isExpanded: true,
       isLoading: false
     };
-    
+
     setRootNode(root);
     expandNode(root);
     loadNodeContent(root);
@@ -145,13 +149,13 @@ const App: React.FC = () => {
       };
 
       const newRoot = traverse(prevRoot);
-      
+
       // Update selected node ref if it was updated
       if (selectedNode && selectedNode.id === nodeId) {
-         const updatedSelected = findNodeById(newRoot, nodeId);
-         if (updatedSelected) {
-           setSelectedNode(updatedSelected);
-         }
+        const updatedSelected = findNodeById(newRoot, nodeId);
+        if (updatedSelected) {
+          setSelectedNode(updatedSelected);
+        }
       }
       return newRoot;
     });
@@ -191,8 +195,8 @@ const App: React.FC = () => {
     // Context Logic: Find the parent node to provide context
     let parentContext = "";
     if (node.parentId && rootNode) {
-       const parent = findNodeById(rootNode, node.parentId);
-       if (parent) parentContext = parent.name;
+      const parent = findNodeById(rootNode, node.parentId);
+      if (parent) parentContext = parent.name;
     }
 
     try {
@@ -213,7 +217,7 @@ const App: React.FC = () => {
         isExpanded: true,
         children: newChildren
       }));
-      
+
     } catch (e) {
       console.error(e);
       updateTree(node.id, n => ({ ...n, isLoading: false }));
@@ -237,14 +241,14 @@ const App: React.FC = () => {
 
     // STANDARD NAVIGATION LOGIC
     if (!selectedNode || selectedNode.id !== node.id) {
-       setSelectedNode(node);
-       if (!node.detailedContent && !node.isContentLoading) {
-          loadNodeContent(node);
-       }
+      setSelectedNode(node);
+      if (!node.detailedContent && !node.isContentLoading) {
+        loadNodeContent(node);
+      }
     } else {
-        if (node.children && node.children.length > 0) {
-            updateTree(node.id, n => ({ ...n, isExpanded: !n.isExpanded }));
-        }
+      if (node.children && node.children.length > 0) {
+        updateTree(node.id, n => ({ ...n, isExpanded: !n.isExpanded }));
+      }
     }
   }, [isMergeMode, mergeSelection, selectedNode, updateTree, loadNodeContent]);
 
@@ -264,7 +268,7 @@ const App: React.FC = () => {
         // We will append the new node to the second selected node for now, 
         // to keep the tree structure valid.
         const targetNode = nodeB;
-        
+
         const newNode: KnowledgeNode = {
           id: generateId(),
           name: result.title,
@@ -297,11 +301,11 @@ const App: React.FC = () => {
 
   const handleSidebarExpandClick = () => {
     if (selectedNode) {
-        if (selectedNode.children && selectedNode.children.length > 0) {
-             updateTree(selectedNode.id, n => ({ ...n, isExpanded: !n.isExpanded }));
-        } else {
-            expandNode(selectedNode);
-        }
+      if (selectedNode.children && selectedNode.children.length > 0) {
+        updateTree(selectedNode.id, n => ({ ...n, isExpanded: !n.isExpanded }));
+      } else {
+        expandNode(selectedNode);
+      }
     }
   }
 
@@ -309,9 +313,77 @@ const App: React.FC = () => {
     if (selectedNode) setIsModalOpen(true);
   };
 
+  // Voice Command Handlers
+  const handleVoiceExplore = useCallback((topic: string) => {
+    // If we don't have a root node yet, create one with the voice topic
+    if (!rootNode) {
+      const root: KnowledgeNode = {
+        id: generateId(),
+        name: topic,
+        description: "Voice-initiated exploration",
+        children: [],
+        isExpanded: true,
+        isLoading: false
+      };
+      setRootNode(root);
+      expandNode(root);
+      loadNodeContent(root);
+      setInputValue(topic);
+    } else {
+      // Create a new branch from the selected node or root
+      const parentNode = selectedNode || rootNode;
+      const newNode: KnowledgeNode = {
+        id: generateId(),
+        name: topic,
+        description: "Voice exploration branch",
+        parentId: parentNode.id,
+        children: [],
+        isExpanded: false,
+        isLoading: false
+      };
+
+      updateTree(parentNode.id, n => ({
+        ...n,
+        isExpanded: true,
+        children: [...(n.children || []), newNode]
+      }));
+
+      setSelectedNode(newNode);
+      loadNodeContent(newNode);
+      expandNode(newNode);
+    }
+  }, [rootNode, selectedNode, expandNode, loadNodeContent, updateTree]);
+
+  const handleVoiceExpand = useCallback(() => {
+    if (selectedNode) {
+      handleSidebarExpandClick();
+    }
+  }, [selectedNode]);
+
+  const handleVoiceRead = useCallback(() => {
+    // This will trigger the sidebar to switch to voice tab and play
+    // For now, just log - the actual read is handled by the VoiceInterface
+    console.log('Voice read requested');
+  }, []);
+
+  const handleVoiceCombine = useCallback(() => {
+    if (!isMergeMode) {
+      setIsMergeMode(true);
+    }
+  }, [isMergeMode]);
+
+  const handleVoiceBack = useCallback(() => {
+    if (selectedNode && selectedNode.parentId && rootNode) {
+      const parent = findNodeById(rootNode, selectedNode.parentId);
+      if (parent) {
+        setSelectedNode(parent);
+      }
+    }
+  }, [selectedNode, rootNode]);
+
   return (
     <div className="w-full h-screen bg-cyber-black text-cyber-text font-sans relative flex flex-col overflow-hidden selection:bg-cyber-accent selection:text-black">
-      
+
       <BackgroundGrid />
 
       {/* Header UI */}
@@ -328,59 +400,71 @@ const App: React.FC = () => {
         {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
         {rootNode && (
           <div className={`pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out ${selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}`}>
-             
-             {/* Mode Toggles */}
-             <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
-                <button 
-                  onClick={() => setViewMode('tree')}
-                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                  title="Tree View"
+
+            {/* Mode Toggles */}
+            <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                title="Tree View"
+              >
+                <GitGraph size={16} />
+              </button>
+              <div className="w-[1px] bg-cyber-border"></div>
+              <button
+                onClick={() => setViewMode('network')}
+                className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                title="Network Matrix"
+              >
+                <Network size={16} />
+              </button>
+            </div>
+
+            {/* Status Divider */}
+            <div className="h-6 w-[1px] bg-cyber-border"></div>
+
+            {/* System Status (Hidden on small screens) */}
+            <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-gray-500 leading-tight">
+              <span className="flex items-center gap-1 text-cyber-success"><Activity size={8} /> OPTIMAL</span>
+              <span className="flex items-center gap-1"><ShieldCheck size={8} /> ENCRYPTED</span>
+            </div>
+
+            {/* Merge Controls */}
+            <div className="flex items-center gap-2">
+              {isMergeMode && mergeSelection.length === 2 ? (
+                <button
+                  onClick={executeSynthesis}
+                  disabled={isSynthesizing}
+                  className="p-2 px-3 bg-amber-500 text-black font-bold text-xs font-mono uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(245,158,11,0.5)] hover:bg-amber-400 transition-all rounded-sm"
                 >
-                   <GitGraph size={16} />
+                  {isSynthesizing ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
+                  FUSE
                 </button>
-                <div className="w-[1px] bg-cyber-border"></div>
-                <button 
-                  onClick={() => setViewMode('network')}
-                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                  title="Network Matrix"
-                >
-                   <Network size={16} />
-                </button>
-             </div>
+              ) : null}
 
-             {/* Status Divider */}
-             <div className="h-6 w-[1px] bg-cyber-border"></div>
+              <button
+                onClick={toggleMergeMode}
+                className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isMergeMode
+                  ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                  }`}
+              >
+                <GitMerge size={14} /> {isMergeMode ? 'CANCEL' : 'COMBINE'}
+              </button>
 
-             {/* System Status (Hidden on small screens) */}
-             <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-gray-500 leading-tight">
-                <span className="flex items-center gap-1 text-cyber-success"><Activity size={8} /> OPTIMAL</span>
-                <span className="flex items-center gap-1"><ShieldCheck size={8} /> ENCRYPTED</span>
-             </div>
-
-             {/* Merge Controls */}
-             <div className="flex items-center gap-2">
-                 {isMergeMode && mergeSelection.length === 2 ? (
-                     <button 
-                       onClick={executeSynthesis}
-                       disabled={isSynthesizing}
-                       className="p-2 px-3 bg-amber-500 text-black font-bold text-xs font-mono uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(245,158,11,0.5)] hover:bg-amber-400 transition-all rounded-sm"
-                     >
-                       {isSynthesizing ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
-                       FUSE
-                     </button>
-                 ) : null}
-
-                 <button 
-                    onClick={toggleMergeMode}
-                    className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${
-                      isMergeMode 
-                        ? 'bg-amber-500/10 border-amber-500 text-amber-500' 
-                        : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
-                    }`}
-                 >
-                    <GitMerge size={14} /> {isMergeMode ? 'CANCEL' : 'COMBINE'}
-                 </button>
-             </div>
+              {/* Voice Toggle */}
+              <button
+                onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isVoiceEnabled
+                  ? 'bg-purple-500/10 border-purple-500 text-purple-400'
+                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                  }`}
+                title={isVoiceEnabled ? 'Disable Voice' : 'Enable Voice'}
+              >
+                {isVoiceEnabled ? <Mic size={14} /> : <MicOff size={14} />}
+                VOICE
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -390,42 +474,42 @@ const App: React.FC = () => {
         <div className="flex-1 flex flex-col items-center justify-center relative z-10 p-4">
           {!bootComplete ? (
             <div className="w-full max-w-md">
-               <IntroSequence onComplete={() => setBootComplete(true)} />
+              <IntroSequence onComplete={() => setBootComplete(true)} />
             </div>
           ) : (
             <div className="max-w-xl w-full animate-in zoom-in-95 duration-700">
               <div className="bg-cyber-panel/80 border border-cyber-border p-1 backdrop-blur-sm hud-panel">
                 <div className="p-8 border border-cyber-border/50 relative overflow-hidden">
-                    {/* Decorative HUD Elements */}
-                    <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-accent"></div>
-                    <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-accent"></div>
-                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-accent"></div>
-                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-accent"></div>
+                  {/* Decorative HUD Elements */}
+                  <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-accent"></div>
+                  <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-accent"></div>
+                  <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-accent"></div>
+                  <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-accent"></div>
 
-                    <label className="block text-cyber-accent text-xs font-mono mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-                       <Terminal size={14} /> Subject_Input_Protocol
-                    </label>
+                  <label className="block text-cyber-accent text-xs font-mono mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Terminal size={14} /> Subject_Input_Protocol
+                  </label>
 
-                    <div className="relative group mb-6">
-                      <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-                        placeholder="ENTER SUBJECT..."
-                        className="w-full bg-black border-b-2 border-cyber-border text-white py-3 px-2 text-xl focus:outline-none focus:border-cyber-accent font-mono placeholder-gray-800 transition-all uppercase tracking-wider"
-                        autoFocus
-                      />
-                      <div className="absolute bottom-0 left-0 h-[2px] bg-cyber-accent w-0 group-focus-within:w-full transition-all duration-500 shadow-[0_0_10px_#00f3ff]"></div>
-                    </div>
+                  <div className="relative group mb-6">
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                      placeholder="ENTER SUBJECT..."
+                      className="w-full bg-black border-b-2 border-cyber-border text-white py-3 px-2 text-xl focus:outline-none focus:border-cyber-accent font-mono placeholder-gray-800 transition-all uppercase tracking-wider"
+                      autoFocus
+                    />
+                    <div className="absolute bottom-0 left-0 h-[2px] bg-cyber-accent w-0 group-focus-within:w-full transition-all duration-500 shadow-[0_0_10px_#00f3ff]"></div>
+                  </div>
 
-                    <button 
-                      onClick={handleStart}
-                      className="w-full bg-cyber-accent/10 hover:bg-cyber-accent hover:text-black border border-cyber-accent/50 text-cyber-accent py-3 px-6 transition-all duration-300 font-mono text-sm uppercase tracking-widest flex items-center justify-between group hud-btn"
-                    >
-                      <span>Initialize Dive</span>
-                      <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
+                  <button
+                    onClick={handleStart}
+                    className="w-full bg-cyber-accent/10 hover:bg-cyber-accent hover:text-black border border-cyber-accent/50 text-cyber-accent py-3 px-6 transition-all duration-300 font-mono text-sm uppercase tracking-widest flex items-center justify-between group hud-btn"
+                  >
+                    <span>Initialize Dive</span>
+                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               </div>
               <p className="mt-4 text-gray-600 text-[10px] font-mono text-center uppercase tracking-widest opacity-50">
@@ -436,41 +520,41 @@ const App: React.FC = () => {
         </div>
       ) : (
         <div className="flex-1 relative animate-in fade-in duration-1000">
-          
+
           {/* Instructions Overlay for Merge Mode */}
           {isMergeMode && (
-             <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 bg-black/80 border border-amber-500/50 text-amber-500 px-6 py-2 rounded-full backdrop-blur-md text-xs font-mono tracking-widest animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                SELECT 2 NODES TO SYNTHESIZE [{mergeSelection.length}/2]
-             </div>
+            <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 bg-black/80 border border-amber-500/50 text-amber-500 px-6 py-2 rounded-full backdrop-blur-md text-xs font-mono tracking-widest animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+              SELECT 2 NODES TO SYNTHESIZE [{mergeSelection.length}/2]
+            </div>
           )}
 
           {/* Visualizations */}
           {viewMode === 'tree' ? (
-            <MindMap 
-              data={rootNode} 
-              width={dimensions.width} 
-              height={dimensions.height} 
+            <MindMap
+              data={rootNode}
+              width={dimensions.width}
+              height={dimensions.height}
               onNodeClick={handleNodeClick}
               mergeSelection={mergeSelection}
             />
           ) : (
-            <NetworkGraph 
-              data={rootNode} 
-              width={dimensions.width} 
-              height={dimensions.height} 
+            <NetworkGraph
+              data={rootNode}
+              width={dimensions.width}
+              height={dimensions.height}
               onNodeClick={handleNodeClick}
               mergeSelection={mergeSelection}
             />
           )}
-          
+
           {/* Sidebar - Remains visible in merge mode to provide controls */}
           {selectedNode && (
-            <Sidebar 
-               node={selectedNode}
-               onClose={() => setSelectedNode(null)}
-               onExpand={handleSidebarExpandClick}
-               onOpenModal={handleOpenModal}
-               onChildClick={handleNodeClick}
+            <Sidebar
+              node={selectedNode}
+              onClose={() => setSelectedNode(null)}
+              onExpand={handleSidebarExpandClick}
+              onOpenModal={handleOpenModal}
+              onChildClick={handleNodeClick}
             />
           )}
 
@@ -481,6 +565,18 @@ const App: React.FC = () => {
 
         </div>
       )}
+
+      {/* Voice Interface - Always rendered when enabled for voice navigation */}
+      <VoiceInterface
+        currentTopic={selectedNode?.name || rootNode?.name}
+        currentContent={selectedNode?.detailedContent || selectedNode?.description}
+        onExplore={handleVoiceExplore}
+        onExpand={handleVoiceExpand}
+        onRead={handleVoiceRead}
+        onCombine={handleVoiceCombine}
+        onBack={handleVoiceBack}
+        isEnabled={isVoiceEnabled}
+      />
     </div>
   );
 };
