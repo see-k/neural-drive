@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Layers, ChevronRight } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon, Maximize2, Play, Square, MessageSquare, FileText, Mic, Globe, Cpu, Wifi, Layers, ChevronRight, Volume2 } from 'lucide-react';
 import { KnowledgeNode } from '../types';
 import { ChatInterface } from './ChatInterface';
-import { generateSpeech } from '../services/geminiService';
+import { generateSpeech, generateVoiceSummary } from '../services/geminiService';
+import { generateElevenLabsSpeech, decodeElevenLabsAudio } from '../services/elevenLabsService';
 import { decodeAudioData } from '../utils/audioUtils';
 
 interface SidebarProps {
@@ -16,13 +17,13 @@ interface SidebarProps {
 type Tab = 'data' | 'voice' | 'link';
 
 const stripHtml = (html: string) => {
-    const tmp = document.createElement("DIV");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-    node, onClose, onExpand, onOpenModal, onChildClick
+export const Sidebar: React.FC<SidebarProps> = ({
+  node, onClose, onExpand, onOpenModal, onChildClick
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('data');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -44,34 +45,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
     setAudioError(null);
-    
+
     // CRITICAL FIX: Initialize/Resume AudioContext immediately on user interaction
     if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     if (audioContextRef.current.state === 'suspended') {
-        try {
-            await audioContextRef.current.resume();
-        } catch (e) {
-            console.error("Audio resume failed", e);
-        }
-    }
-
-    let textToSpeak = node.detailedContent ? stripHtml(node.detailedContent) : node.description;
-    textToSpeak = textToSpeak.replace(/\[\d+\]/g, '');
-    
-    if (textToSpeak.length > 800) textToSpeak = textToSpeak.substring(0, 800) + "...";
-    if (!textToSpeak.trim()) {
-        setAudioError("DATA CORRUPT: NO AUDIO SOURCE");
-        return;
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error("Audio resume failed", e);
+      }
     }
 
     setIsAudioLoading(true);
 
     try {
-      const base64Audio = await generateSpeech(textToSpeak);
-      if (base64Audio && audioContextRef.current) {
-        const audioBuffer = await decodeAudioData(base64Audio, audioContextRef.current);
+      // Generate a voice-optimized summary using Vertex AI
+      let textToSpeak = node.detailedContent ? stripHtml(node.detailedContent) : node.description;
+      textToSpeak = textToSpeak.replace(/\[\d+\]/g, '');
+
+      // Try to get a voice-optimized summary for better TTS
+      try {
+        const voiceSummary = await generateVoiceSummary(node.name, textToSpeak);
+        if (voiceSummary) {
+          textToSpeak = voiceSummary;
+        }
+      } catch (e) {
+        console.log("Using original content for TTS");
+      }
+
+      if (textToSpeak.length > 2000) textToSpeak = textToSpeak.substring(0, 2000) + "...";
+      if (!textToSpeak.trim()) {
+        setAudioError("DATA CORRUPT: NO AUDIO SOURCE");
+        setIsAudioLoading(false);
+        return;
+      }
+
+      // Try ElevenLabs first for higher quality voice
+      let audioBuffer: AudioBuffer | null = null;
+
+      const elevenLabsAudio = await generateElevenLabsSpeech(textToSpeak, { voiceProfile: 'neural' });
+
+      if (elevenLabsAudio && audioContextRef.current) {
+        // ElevenLabs returns MP3, which decodeAudioData can handle
+        audioBuffer = await decodeElevenLabsAudio(elevenLabsAudio, audioContextRef.current);
+        console.log("Using ElevenLabs TTS");
+      } else {
+        // Fallback to Gemini TTS
+        console.log("Falling back to Gemini TTS");
+        const geminiAudio = await generateSpeech(textToSpeak);
+        if (geminiAudio && audioContextRef.current) {
+          audioBuffer = await decodeAudioData(geminiAudio, audioContextRef.current);
+        }
+      }
+
+      if (audioBuffer && audioContextRef.current) {
         const source = audioContextRef.current.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContextRef.current.destination);
@@ -80,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         sourceNodeRef.current = source;
         setIsPlaying(true);
       } else {
-          setAudioError("AUDIO STREAM FAILED");
+        setAudioError("AUDIO STREAM FAILED");
       }
     } catch (e) {
       console.error("Audio Playback Error:", e);
@@ -92,7 +121,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const stopAudio = () => {
     if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); } catch (e) {}
+      try {
+        sourceNodeRef.current.stop();
+      } catch (e) {
+        console.warn('Failed to stop audio source:', e);
+      }
       sourceNodeRef.current = null;
     }
     setIsPlaying(false);
@@ -100,58 +133,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="absolute top-0 right-0 h-full w-80 md:w-[480px] z-[60] flex flex-col pointer-events-none p-0 md:p-6 md:pl-0">
-      
+
       {/* HUD Container - Sleek Rectangular Panel */}
       <div className="pointer-events-auto h-full w-full bg-cyber-panel/95 border-l border-cyber-border flex flex-col relative shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-md">
-        
+
         {/* Top Tech Bar */}
         <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-cyber-border/30 select-none">
-            <div className="flex items-center gap-3 opacity-60">
-                <div className="flex gap-0.5">
-                   <div className="w-1 h-1 bg-cyber-accent rounded-full"></div>
-                   <div className="w-1 h-1 bg-cyber-accent/50 rounded-full"></div>
-                   <div className="w-1 h-1 bg-cyber-accent/20 rounded-full"></div>
-                </div>
-                <span className="text-[8px] font-mono text-cyber-accent tracking-widest uppercase">
-                  NET.ID: {node.id.substring(0,6).toUpperCase()}
-                </span>
+          <div className="flex items-center gap-3 opacity-60">
+            <div className="flex gap-0.5">
+              <div className="w-1 h-1 bg-cyber-accent rounded-full"></div>
+              <div className="w-1 h-1 bg-cyber-accent/50 rounded-full"></div>
+              <div className="w-1 h-1 bg-cyber-accent/20 rounded-full"></div>
             </div>
-            
-            <button 
-               onClick={onClose}
-               className="group flex items-center gap-2 px-2 py-1 hover:bg-white/5 transition-all border border-transparent hover:border-cyber-danger/30 rounded-sm"
-               title="Close Panel"
-            >
-               <span className="text-[8px] font-mono text-gray-500 uppercase group-hover:text-cyber-danger transition-colors">Terminate</span>
-               <X size={14} className="text-gray-500 group-hover:text-cyber-danger transition-colors" />
-            </button>
+            <span className="text-[8px] font-mono text-cyber-accent tracking-widest uppercase">
+              NET.ID: {node.id.substring(0, 6).toUpperCase()}
+            </span>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="group flex items-center gap-2 px-2 py-1 hover:bg-white/5 transition-all border border-transparent hover:border-cyber-danger/30 rounded-sm"
+            title="Close Panel"
+          >
+            <span className="text-[8px] font-mono text-gray-500 uppercase group-hover:text-cyber-danger transition-colors">Terminate</span>
+            <X size={14} className="text-gray-500 group-hover:text-cyber-danger transition-colors" />
+          </button>
         </div>
 
         {/* Node Header */}
         <div className="p-6 pb-4 relative overflow-hidden bg-gradient-to-b from-black/20 to-transparent">
-           <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
-              <Cpu size={120} />
-           </div>
-           
-           <div className="flex items-center gap-2 mb-3 relative z-10">
-              <span className="text-[9px] font-mono text-cyber-accent/80 border border-cyber-accent/30 px-1.5 py-0.5 bg-cyber-accent/5 uppercase tracking-widest">
-                 Target Analysis
-              </span>
-              <div className="h-[1px] w-12 bg-cyber-accent/30"></div>
-           </div>
-           
-           <h2 className="text-3xl font-bold text-white font-mono break-words leading-[0.9] tracking-tighter drop-shadow-[0_0_10px_rgba(0,0,0,0.5)] relative z-10">
-             {node.name.toUpperCase()}
-           </h2>
+          <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
+            <Cpu size={120} />
+          </div>
+
+          <div className="flex items-center gap-2 mb-3 relative z-10">
+            <span className="text-[9px] font-mono text-cyber-accent/80 border border-cyber-accent/30 px-1.5 py-0.5 bg-cyber-accent/5 uppercase tracking-widest">
+              Target Analysis
+            </span>
+            <div className="h-[1px] w-12 bg-cyber-accent/30"></div>
+          </div>
+
+          <h2 className="text-3xl font-bold text-white font-mono break-words leading-[0.9] tracking-tighter drop-shadow-[0_0_10px_rgba(0,0,0,0.5)] relative z-10">
+            {node.name.toUpperCase()}
+          </h2>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex px-6 gap-1 bg-black/20 pt-2 border-b border-cyber-border/20">
           {['data', 'voice', 'link'].map((t) => (
-            <button 
-               key={t}
-               onClick={() => setActiveTab(t as Tab)}
-               className={`flex-1 pb-2 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-b-2 ${activeTab === t ? 'border-cyber-accent text-white' : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-white/5'}`}
+            <button
+              key={t}
+              onClick={() => setActiveTab(t as Tab)}
+              className={`flex-1 pb-2 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-b-2 ${activeTab === t ? 'border-cyber-accent text-white' : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-white/5'}`}
             >
               {t === 'data' && <FileText size={12} />}
               {t === 'voice' && <Mic size={12} />}
@@ -162,172 +195,172 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className="flex-1 overflow-hidden relative bg-gradient-to-b from-transparent to-black/80">
-          
+
           {/* DATA TAB */}
           {activeTab === 'data' && (
-             <div className="h-full overflow-y-auto custom-scrollbar p-6 flex flex-col">
-                <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] font-mono">
-                   <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
-                      <span className="text-gray-500">NODE_STATUS</span>
-                      <span className={node.isLoading ? 'text-cyber-danger animate-pulse' : 'text-cyber-success'}>
-                        {node.isLoading ? 'BUSY' : 'IDLE'}
-                      </span>
-                   </div>
-                   <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
-                      <span className="text-gray-500">DATA_LINK</span>
-                      <span className={node.isContentLoading ? 'text-purple-400 animate-pulse' : 'text-cyber-accent'}>
-                        {node.isContentLoading ? 'FETCHING' : 'STABLE'}
-                      </span>
-                   </div>
+            <div className="h-full overflow-y-auto custom-scrollbar p-6 flex flex-col">
+              <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] font-mono">
+                <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
+                  <span className="text-gray-500">NODE_STATUS</span>
+                  <span className={node.isLoading ? 'text-cyber-danger animate-pulse' : 'text-cyber-success'}>
+                    {node.isLoading ? 'BUSY' : 'IDLE'}
+                  </span>
                 </div>
+                <div className="bg-black/40 border border-cyber-border/50 p-2 flex items-center justify-between">
+                  <span className="text-gray-500">DATA_LINK</span>
+                  <span className={node.isContentLoading ? 'text-purple-400 animate-pulse' : 'text-cyber-accent'}>
+                    {node.isContentLoading ? 'FETCHING' : 'STABLE'}
+                  </span>
+                </div>
+              </div>
 
-                <div className="mb-6 w-full aspect-video bg-black border border-cyber-border overflow-hidden relative group cursor-pointer shrink-0" onClick={onOpenModal}>
-                  {node.imageUrl ? (
-                    <>
-                      <img src={node.imageUrl} alt={node.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105 filter grayscale contrast-125" />
-                      <div className="absolute inset-0 bg-cyber-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <div className="absolute bottom-2 right-2 bg-black/80 text-cyber-accent p-1 text-[10px] border border-cyber-accent flex items-center gap-1">
-                         <Maximize2 size={10} /> MAXIMIZE
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-cyber-border gap-2">
-                       {node.isContentLoading ? <Loader2 className="animate-spin text-cyber-accent" size={24} /> : <ImageIcon size={24} />}
-                       <span className="text-[10px] font-mono uppercase opacity-50">{node.isContentLoading ? 'Rendering...' : 'No Visual'}</span>
+              <div className="mb-6 w-full aspect-video bg-black border border-cyber-border overflow-hidden relative group cursor-pointer shrink-0" onClick={onOpenModal}>
+                {node.imageUrl ? (
+                  <>
+                    <img src={node.imageUrl} alt={node.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105 filter grayscale contrast-125" />
+                    <div className="absolute inset-0 bg-cyber-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="absolute bottom-2 right-2 bg-black/80 text-cyber-accent p-1 text-[10px] border border-cyber-accent flex items-center gap-1">
+                      <Maximize2 size={10} /> MAXIMIZE
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-                </div>
-
-                <div className="flex-1 relative">
-                  <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-cyber-border to-transparent"></div>
-                  <div className="pl-4">
-                      <p className="text-gray-400 leading-relaxed text-sm mb-4 font-light">
-                        {node.description}
-                      </p>
-                      {node.detailedContent ? (
-                        <div className="text-gray-300 leading-relaxed text-xs font-mono opacity-80 line-clamp-[10] border-l-2 border-cyber-accent/30 pl-3">
-                           {stripHtml(node.detailedContent)}
-                        </div>
-                      ) : node.isContentLoading && (
-                        <div className="space-y-2 opacity-30">
-                          <div className="h-1 bg-cyber-accent w-full animate-pulse"></div>
-                          <div className="h-1 bg-cyber-accent w-3/4 animate-pulse"></div>
-                          <div className="h-1 bg-cyber-accent w-1/2 animate-pulse"></div>
-                        </div>
-                      )}
-                      <button onClick={onOpenModal} className="mt-4 text-[10px] font-mono text-cyber-accent hover:text-white uppercase tracking-widest border border-cyber-accent/30 px-3 py-1 hover:bg-cyber-accent/10 transition-colors">
-                         [ Expand Data ]
-                      </button>
-                  </div>
-                </div>
-
-                {node.sources && node.sources.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-cyber-border/30">
-                    <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-2 flex items-center gap-2">
-                      <Globe size={10} /> Neural References
-                    </h4>
-                    <div className="flex flex-col gap-1">
-                      {node.sources.slice(0, 3).map((source, idx) => (
-                        <a 
-                          key={idx} 
-                          href={source.uri} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-[10px] text-cyber-accent/70 hover:text-cyber-accent truncate block transition-colors font-mono hover:pl-1"
-                        >
-                           {'>'} {source.title}
-                        </a>
-                      ))}
-                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-cyber-border gap-2">
+                    {node.isContentLoading ? <Loader2 className="animate-spin text-cyber-accent" size={24} /> : <ImageIcon size={24} />}
+                    <span className="text-[10px] font-mono uppercase opacity-50">{node.isContentLoading ? 'Rendering...' : 'No Visual'}</span>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+              </div>
 
-                 {node.children && node.children.length > 0 && (
-                   <div className="mt-8">
-                      <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-3 flex items-center gap-2">
-                         <Layers size={12} /> Linked Sub-Nodes
-                      </h4>
-                      <div className="flex flex-col gap-2">
-                        {node.children.map(child => (
-                          <button 
-                            key={child.id} 
-                            onClick={() => onChildClick(child)} 
-                            className="group relative text-left bg-black border border-cyber-border hover:border-cyber-accent p-3 transition-all hover:bg-cyber-accent/5 overflow-hidden"
-                          >
-                             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                             
-                             <div className="flex justify-between items-start mb-1 relative z-10">
-                                <span className="font-mono text-xs font-bold text-cyber-accent group-hover:text-white transition-colors uppercase tracking-wider">
-                                  {child.name}
-                                </span>
-                                <ChevronRight size={14} className="text-cyber-accent opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all"/>
-                             </div>
-                             
-                             <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed font-sans opacity-80 group-hover:opacity-100 transition-opacity relative z-10">
-                               {child.description}
-                             </p>
-                          </button>
-                        ))}
-                      </div>
-                   </div>
-                 )}
-             </div>
+              <div className="flex-1 relative">
+                <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-cyber-border to-transparent"></div>
+                <div className="pl-4">
+                  <p className="text-gray-400 leading-relaxed text-sm mb-4 font-light">
+                    {node.description}
+                  </p>
+                  {node.detailedContent ? (
+                    <div className="text-gray-300 leading-relaxed text-xs font-mono opacity-80 line-clamp-[10] border-l-2 border-cyber-accent/30 pl-3">
+                      {stripHtml(node.detailedContent)}
+                    </div>
+                  ) : node.isContentLoading && (
+                    <div className="space-y-2 opacity-30">
+                      <div className="h-1 bg-cyber-accent w-full animate-pulse"></div>
+                      <div className="h-1 bg-cyber-accent w-3/4 animate-pulse"></div>
+                      <div className="h-1 bg-cyber-accent w-1/2 animate-pulse"></div>
+                    </div>
+                  )}
+                  <button onClick={onOpenModal} className="mt-4 text-[10px] font-mono text-cyber-accent hover:text-white uppercase tracking-widest border border-cyber-accent/30 px-3 py-1 hover:bg-cyber-accent/10 transition-colors">
+                    [ Expand Data ]
+                  </button>
+                </div>
+              </div>
+
+              {node.sources && node.sources.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-cyber-border/30">
+                  <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-2 flex items-center gap-2">
+                    <Globe size={10} /> Neural References
+                  </h4>
+                  <div className="flex flex-col gap-1">
+                    {node.sources.slice(0, 3).map((source, idx) => (
+                      <a
+                        key={idx}
+                        href={source.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-cyber-accent/70 hover:text-cyber-accent truncate block transition-colors font-mono hover:pl-1"
+                      >
+                        {'>'} {source.title}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {node.children && node.children.length > 0 && (
+                <div className="mt-8">
+                  <h4 className="text-[10px] font-mono text-gray-500 uppercase mb-3 flex items-center gap-2">
+                    <Layers size={12} /> Linked Sub-Nodes
+                  </h4>
+                  <div className="flex flex-col gap-2">
+                    {node.children.map(child => (
+                      <button
+                        key={child.id}
+                        onClick={() => onChildClick(child)}
+                        className="group relative text-left bg-black border border-cyber-border hover:border-cyber-accent p-3 transition-all hover:bg-cyber-accent/5 overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyber-accent/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                        <div className="flex justify-between items-start mb-1 relative z-10">
+                          <span className="font-mono text-xs font-bold text-cyber-accent group-hover:text-white transition-colors uppercase tracking-wider">
+                            {child.name}
+                          </span>
+                          <ChevronRight size={14} className="text-cyber-accent opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </div>
+
+                        <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed font-sans opacity-80 group-hover:opacity-100 transition-opacity relative z-10">
+                          {child.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* VOICE TAB */}
           {activeTab === 'voice' && (
             <div className="h-full p-6 flex flex-col items-center justify-center text-center relative">
-               <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                  <div className="w-64 h-64 border border-cyber-accent rounded-full animate-pulse-fast"></div>
-                  <div className="absolute w-48 h-48 border border-cyber-accent/50 rounded-full animate-spin-slow"></div>
-               </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                <div className="w-64 h-64 border border-cyber-accent rounded-full animate-pulse-fast"></div>
+                <div className="absolute w-48 h-48 border border-cyber-accent/50 rounded-full animate-spin-slow"></div>
+              </div>
 
-               <div className="w-32 h-32 flex items-center justify-center relative z-10 mb-6">
-                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-45 transition-all duration-300 pointer-events-none ${isPlaying ? 'scale-110' : 'scale-100'}`}></div>
-                  <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-12 transition-all duration-300 opacity-50 pointer-events-none ${isPlaying ? 'scale-125' : 'scale-100'}`}></div>
-                  
-                  {isAudioLoading ? (
-                    <Loader2 className="animate-spin text-cyber-accent relative z-20" size={40} />
-                  ) : isPlaying ? (
-                    <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
-                        <Square size={32} className="text-cyber-accent fill-current" />
-                    </button>
-                  ) : (
-                    <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
-                        <Play size={32} className="text-cyber-accent ml-1 fill-current" />
-                    </button>
-                  )}
-               </div>
-               
-               <h3 className="text-lg font-bold font-mono text-white mb-2 tracking-widest">AUDIO SYNTH</h3>
-               <p className="text-gray-500 text-xs font-mono max-w-xs">
-                 {audioError ? <span className="text-cyber-danger">{audioError}</span> : `Initiating neural text-to-speech protocol for subject.`}
-               </p>
+              <div className="w-32 h-32 flex items-center justify-center relative z-10 mb-6">
+                <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-45 transition-all duration-300 pointer-events-none ${isPlaying ? 'scale-110' : 'scale-100'}`}></div>
+                <div className={`absolute inset-0 border-2 border-cyber-accent transform rotate-12 transition-all duration-300 opacity-50 pointer-events-none ${isPlaying ? 'scale-125' : 'scale-100'}`}></div>
 
-               {/* Live Visualizer */}
-               <div className="mt-8 flex items-end justify-center gap-[2px] h-12 w-full max-w-[200px] overflow-hidden">
-                  <style>{`
+                {isAudioLoading ? (
+                  <Loader2 className="animate-spin text-cyber-accent relative z-20" size={40} />
+                ) : isPlaying ? (
+                  <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
+                    <Square size={32} className="text-cyber-accent fill-current" />
+                  </button>
+                ) : (
+                  <button onClick={playBriefing} className="hover:scale-110 transition-transform relative z-20 cursor-pointer p-4 rounded-full">
+                    <Play size={32} className="text-cyber-accent ml-1 fill-current" />
+                  </button>
+                )}
+              </div>
+
+              <h3 className="text-lg font-bold font-mono text-white mb-2 tracking-widest">AUDIO SYNTH</h3>
+              <p className="text-gray-500 text-xs font-mono max-w-xs">
+                {audioError ? <span className="text-cyber-danger">{audioError}</span> : `Initiating neural text-to-speech protocol for subject.`}
+              </p>
+
+              {/* Live Visualizer */}
+              <div className="mt-8 flex items-end justify-center gap-[2px] h-12 w-full max-w-[200px] overflow-hidden">
+                <style>{`
                     @keyframes equalizer {
                       0% { height: 10%; opacity: 0.3; }
                       50% { height: 100%; opacity: 1; }
                       100% { height: 10%; opacity: 0.3; }
                     }
                   `}</style>
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="w-1 bg-cyber-accent"
-                      style={{ 
-                        height: isPlaying ? '50%' : '10%', 
-                        animation: isPlaying ? `equalizer ${0.4 + Math.random() * 0.5}s ease-in-out infinite` : 'none',
-                        animationDelay: `-${Math.random()}s`,
-                        transition: 'height 0.2s ease, opacity 0.2s ease'
-                      }}
-                    ></div>
-                  ))}
-               </div>
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-cyber-accent"
+                    style={{
+                      height: isPlaying ? '50%' : '10%',
+                      animation: isPlaying ? `equalizer ${0.4 + Math.random() * 0.5}s ease-in-out infinite` : 'none',
+                      animationDelay: `-${Math.random()}s`,
+                      transition: 'height 0.2s ease, opacity 0.2s ease'
+                    }}
+                  ></div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -343,16 +376,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Footer Action */}
         {activeTab === 'data' && (
           <div className="p-4 border-t border-cyber-border bg-black/40 z-10">
-              <button 
-                onClick={onExpand}
-                className={`w-full py-3 bg-cyber-accent/5 border border-cyber-accent text-cyber-accent font-bold font-mono hover:bg-cyber-accent hover:text-black transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs hud-btn ${node.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={node.isLoading}
-              >
-                {node.isLoading ? <Loader2 className="animate-spin" size={14} /> : <Wifi size={14} />}
-                {node.children && node.children.length > 0 
-                  ? (node.isExpanded ? 'COLLAPSE TREE' : 'EXPAND TREE') 
-                  : 'INITIATE BRANCHING'}
-              </button>
+            <button
+              onClick={onExpand}
+              className={`w-full py-3 bg-cyber-accent/5 border border-cyber-accent text-cyber-accent font-bold font-mono hover:bg-cyber-accent hover:text-black transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs hud-btn ${node.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={node.isLoading}
+            >
+              {node.isLoading ? <Loader2 className="animate-spin" size={14} /> : <Wifi size={14} />}
+              {node.children && node.children.length > 0
+                ? (node.isExpanded ? 'COLLAPSE TREE' : 'EXPAND TREE')
+                : 'INITIATE BRANCHING'}
+            </button>
           </div>
         )}
       </div>
