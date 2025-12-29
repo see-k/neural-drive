@@ -41,9 +41,6 @@ interface TTSOptions {
  */
 import { getStoredAPIKeys } from '../contexts/APIKeysContext';
 
-// ... (existing imports or constants if any, but I'm targeting the function start)
-// Actually I need to be careful with imports. I will just add the import at the top and modify the function.
-
 /**
  * Generate speech from text using ElevenLabs TTS
  * Returns base64 encoded audio data
