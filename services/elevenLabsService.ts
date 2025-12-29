@@ -7,12 +7,17 @@
 // ElevenLabs API configuration
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
+// Custom voice ID from environment (takes priority)
+const CUSTOM_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
+
 // Voice IDs for different personas - these are ElevenLabs preset voices
+// If a custom voice ID is provided, it becomes the 'neural' (default) voice
 export const VOICE_PROFILES = {
-  neural: 'pNInz6obpgDQGcFmaJgB', // Adam - Deep, professional
+  neural: CUSTOM_VOICE_ID || 'pNInz6obpgDQGcFmaJgB', // Custom or Adam - Deep, professional
   assistant: 'EXAVITQu4vr4xnSDxMaL', // Bella - Warm, friendly
   narrator: '21m00Tcm4TlvDq8ikWAM', // Rachel - Clear, articulate
   cyber: 'VR6AewLTigWG4xSOukaG', // Arnold - Authoritative
+  custom: CUSTOM_VOICE_ID || 'pNInz6obpgDQGcFmaJgB', // Explicit custom option
 } as const;
 
 export type VoiceProfile = keyof typeof VOICE_PROFILES;
@@ -39,7 +44,7 @@ export const generateElevenLabsSpeech = async (
   options: TTSOptions = {}
 ): Promise<string | undefined> => {
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  
+
   if (!apiKey) {
     console.warn('ElevenLabs API key not configured, falling back to Gemini TTS');
     return undefined;
@@ -52,7 +57,7 @@ export const generateElevenLabsSpeech = async (
   } = options;
 
   const voiceId = VOICE_PROFILES[voiceProfile];
-  
+
   const defaultSettings: VoiceSettings = {
     stability: 0.5,
     similarity_boost: 0.75,
@@ -87,7 +92,7 @@ export const generateElevenLabsSpeech = async (
     const base64 = btoa(
       new Uint8Array(audioBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
-    
+
     return base64;
   } catch (error) {
     console.error('ElevenLabs TTS Error:', error);
@@ -108,7 +113,7 @@ export const decodeElevenLabsAudio = async (
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  
+
   // Decode MP3 audio
   return await audioContext.decodeAudioData(bytes.buffer);
 };
@@ -135,7 +140,7 @@ const COMMAND_PATTERNS = {
 
 export const parseVoiceCommand = (transcript: string): VoiceCommand => {
   const cleaned = transcript.trim().toLowerCase();
-  
+
   // Check each pattern
   for (const [type, pattern] of Object.entries(COMMAND_PATTERNS)) {
     const match = cleaned.match(pattern);
@@ -148,7 +153,7 @@ export const parseVoiceCommand = (transcript: string): VoiceCommand => {
       };
     }
   }
-  
+
   // If no command matched but there's text, treat as explore command
   if (cleaned.length > 2) {
     return {
@@ -158,7 +163,7 @@ export const parseVoiceCommand = (transcript: string): VoiceCommand => {
       confidence: 0.7,
     };
   }
-  
+
   return {
     type: 'unknown',
     rawTranscript: transcript,
@@ -183,7 +188,7 @@ export const createVoiceRecognition = (
 ): VoiceRecognitionController | null => {
   // Check for browser support
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  
+
   if (!SpeechRecognition) {
     console.warn('Speech Recognition not supported in this browser');
     return null;
@@ -210,7 +215,7 @@ export const createVoiceRecognition = (
   recognition.onerror = (event: any) => {
     listening = false;
     onListeningChange(false);
-    
+
     if (event.error === 'no-speech') {
       onError('No speech detected. Try again.');
     } else if (event.error === 'not-allowed') {
@@ -223,7 +228,7 @@ export const createVoiceRecognition = (
   recognition.onresult = (event: any) => {
     const transcript = event.results[0][0].transcript;
     const confidence = event.results[0][0].confidence;
-    
+
     const command = parseVoiceCommand(transcript);
     command.confidence = confidence;
     onResult(command);
@@ -255,28 +260,28 @@ export const playFeedbackSound = (type: 'start' | 'success' | 'error') => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
-  
+
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
+
   const frequencies = {
     start: [440, 550], // Rising tone
     success: [550, 660, 880], // Happy chirp
     error: [440, 330], // Falling tone
   };
-  
+
   const freq = frequencies[type];
   let time = audioContext.currentTime;
-  
+
   oscillator.type = 'sine';
   gainNode.gain.setValueAtTime(0.1, time);
-  
+
   freq.forEach((f, i) => {
     oscillator.frequency.setValueAtTime(f, time + i * 0.1);
   });
-  
+
   gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-  
+
   oscillator.start(time);
   oscillator.stop(time + 0.3);
 };
