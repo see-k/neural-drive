@@ -10,12 +10,10 @@ import { useAPIKeys } from './contexts/APIKeysContext';
 import { fetchSubTopics, generateNodeContent, fetchSynthesis } from './services/geminiService';
 import { KnowledgeNode } from './types';
 
-// Simple UUID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 type ViewMode = 'tree' | 'network';
 
-// Helper to find a node by ID in the tree
 const findNodeById = (node: KnowledgeNode | null, id: string): KnowledgeNode | null => {
   if (!node) return null;
   if (node.id === id) return node;
@@ -28,7 +26,6 @@ const findNodeById = (node: KnowledgeNode | null, id: string): KnowledgeNode | n
   return null;
 };
 
-// -- COMPONENT: 3D Grid Background (Moving) --
 const BackgroundGrid = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
     <div className="absolute inset-0 bg-gradient-to-b from-cyber-black via-transparent to-cyber-black z-10"></div>
@@ -397,7 +394,6 @@ const App: React.FC = () => {
 
       <BackgroundGrid />
 
-      {/* Header UI */}
       <div className="absolute top-0 left-0 right-0 p-6 z-50 pointer-events-none flex flex-col md:flex-row justify-between items-start gap-8 w-full">
         <div className="pointer-events-auto flex flex-col">
           <h1 className="text-3xl font-bold font-mono text-white flex items-center gap-3 tracking-tighter">
@@ -409,11 +405,9 @@ const App: React.FC = () => {
         </div>
 
         <div className={`flex items-stretch gap-4 transition-all duration-500 ease-in-out ${selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}`}>
-          {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
           {rootNode && (
             <div className="pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
 
-              {/* Mode Toggles */}
               <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
                 <button
                   onClick={() => setViewMode('tree')}
@@ -548,14 +542,12 @@ const App: React.FC = () => {
       ) : (
         <div className="flex-1 relative animate-in fade-in duration-1000">
 
-          {/* Instructions Overlay for Merge Mode */}
           {isMergeMode && (
             <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 bg-black/80 border border-amber-500/50 text-amber-500 px-6 py-2 rounded-full backdrop-blur-md text-xs font-mono tracking-widest animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.2)]">
               SELECT 2 NODES TO SYNTHESIZE [{mergeSelection.length}/2]
             </div>
           )}
 
-          {/* Visualizations */}
           {viewMode === 'tree' ? (
             <MindMap
               data={rootNode}
@@ -574,7 +566,6 @@ const App: React.FC = () => {
             />
           )}
 
-          {/* Sidebar - Remains visible in merge mode to provide controls */}
           {selectedNode && (
             <Sidebar
               node={selectedNode}
