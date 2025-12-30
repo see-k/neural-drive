@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 interface APIKeys {
     geminiApiKey: string;
+    geminiModel: string;
     elevenLabsApiKey: string;
     elevenLabsVoiceId: string;
 }
@@ -15,6 +16,7 @@ interface APIKeysContextType {
 
 const defaultKeys: APIKeys = {
     geminiApiKey: '',
+    geminiModel: 'gemini-3-flash-preview',
     elevenLabsApiKey: '',
     elevenLabsVoiceId: '',
 };
@@ -38,6 +40,7 @@ export const APIKeysProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Fall back to environment variables (for development)
         return {
             geminiApiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || '',
+            geminiModel: 'gemini-3-flash-preview',
             elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
             elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '',
         };
@@ -94,6 +97,7 @@ export const getStoredAPIKeys = (): APIKeys => {
 
     return {
         geminiApiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || '',
+        geminiModel: 'gemini-3-flash-preview',
         elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
         elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '',
     };

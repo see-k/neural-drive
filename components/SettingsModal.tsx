@@ -91,6 +91,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         <p className="text-[10px] text-gray-500">Required for brain functions (Topics, Summaries, Voice Intent).</p>
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-xs font-mono text-cyber-accent uppercase tracking-wider">
+                            Gemini Model
+                        </label>
+                        <select
+                            value={localKeys.geminiModel || 'gemini-2.0-flash-exp'}
+                            onChange={(e) => setLocalKeys(prev => ({ ...prev, geminiModel: e.target.value }))}
+                            className="w-full bg-black/50 border border-cyber-border rounded px-3 py-2 text-sm text-white focus:border-cyber-accent focus:outline-none focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all font-mono appearance-none"
+                        >
+                            <option value="gemini-3-pro-preview">Gemini 3.0 Pro Preview</option>
+                            <option value="gemini-3-flash-preview">Gemini 3.0 Flash Preview</option>
+                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                            <option value="gemini-2.0-pro">Gemini 2.0 Pro</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        </select>
+                        <p className="text-[10px] text-gray-500">Select the cognitive model for the application.</p>
+                    </div>
+
                     {/* ElevenLabs Config */}
                     <div className="space-y-4 pt-4 border-t border-cyber-border/30">
                         <div className="space-y-2">
@@ -136,7 +155,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <button
                         onClick={() => {
                             if (window.confirm("Are you sure you want to clear your credentials? This will disconnect you from AI services.")) {
-                                setKeys({ geminiApiKey: '', elevenLabsApiKey: '', elevenLabsVoiceId: '' });
+                                setKeys({ geminiApiKey: '', geminiModel: 'gemini-3-flash-preview', elevenLabsApiKey: '', elevenLabsVoiceId: '' });
                                 onClose();
                             }
                         }}

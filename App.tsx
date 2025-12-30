@@ -92,7 +92,7 @@ const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
 };
 
 const App: React.FC = () => {
-  const { isConfigured } = useAPIKeys();
+  const { isConfigured, keys } = useAPIKeys();
   const [inputValue, setInputValue] = useState('');
   const [rootNode, setRootNode] = useState<KnowledgeNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<KnowledgeNode | null>(null);
@@ -408,88 +408,92 @@ const App: React.FC = () => {
           <div className="h-[1px] w-full bg-gradient-to-r from-cyber-accent to-transparent my-2"></div>
         </div>
 
-        {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
-        {rootNode && (
-          <div className={`pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out ${selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}`}>
+        <div className={`flex items-stretch gap-4 transition-all duration-500 ease-in-out ${selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}`}>
+          {/* RESTORED: Top Right Controls (Sleek Floating Island) */}
+          {rootNode && (
+            <div className="pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
 
-            {/* Mode Toggles */}
-            <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
-              <button
-                onClick={() => setViewMode('tree')}
-                className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                title="Tree View"
-              >
-                <GitGraph size={16} />
-              </button>
-              <div className="w-[1px] bg-cyber-border"></div>
-              <button
-                onClick={() => setViewMode('network')}
-                className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                title="Network Matrix"
-              >
-                <Network size={16} />
-              </button>
-            </div>
-
-            {/* Status Divider */}
-            <div className="h-6 w-[1px] bg-cyber-border"></div>
-
-            {/* System Status (Hidden on small screens) */}
-            <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-gray-500 leading-tight">
-              <span className="flex items-center gap-1 text-cyber-success"><Activity size={8} /> OPTIMAL</span>
-              <span className="flex items-center gap-1"><ShieldCheck size={8} /> ENCRYPTED</span>
-            </div>
-
-            {/* Merge Controls */}
-            <div className="flex items-center gap-2">
-              {isMergeMode && mergeSelection.length === 2 ? (
+              {/* Mode Toggles */}
+              <div className="flex bg-black/50 rounded-sm overflow-hidden border border-cyber-border">
                 <button
-                  onClick={executeSynthesis}
-                  disabled={isSynthesizing}
-                  className="p-2 px-3 bg-amber-500 text-black font-bold text-xs font-mono uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(245,158,11,0.5)] hover:bg-amber-400 transition-all rounded-sm"
+                  onClick={() => setViewMode('tree')}
+                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'tree' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title="Tree View"
                 >
-                  {isSynthesizing ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
-                  FUSE
+                  <GitGraph size={16} />
                 </button>
-              ) : null}
+                <div className="w-[1px] bg-cyber-border"></div>
+                <button
+                  onClick={() => setViewMode('network')}
+                  className={`p-2 px-3 flex items-center gap-2 transition-colors ${viewMode === 'network' ? 'bg-cyber-accent text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title="Network Matrix"
+                >
+                  <Network size={16} />
+                </button>
+              </div>
 
-              <button
-                onClick={toggleMergeMode}
-                className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isMergeMode
-                  ? 'bg-amber-500/10 border-amber-500 text-amber-500'
-                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
-                  }`}
-              >
-                <GitMerge size={14} /> {isMergeMode ? 'CANCEL' : 'COMBINE'}
-              </button>
+              {/* Status Divider */}
+              <div className="h-6 w-[1px] bg-cyber-border"></div>
 
-              {/* Voice Toggle */}
-              <button
-                onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isVoiceEnabled
-                  ? 'bg-purple-500/10 border-purple-500 text-purple-400'
-                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
-                  }`}
-                title={isVoiceEnabled ? 'Disable Voice' : 'Enable Voice'}
-              >
-                {isVoiceEnabled ? <Mic size={14} /> : <MicOff size={14} />}
-                VOICE
-              </button>
+              {/* System Status (Hidden on small screens) */}
+              <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-gray-500 leading-tight">
+                <span className="flex items-center gap-1 text-cyber-success"><Activity size={8} /> OPTIMAL</span>
+                <span className="flex items-center gap-1"><ShieldCheck size={8} /> ENCRYPTED</span>
+              </div>
 
-              {/* Settings Button */}
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className={`p-2 transition-all border rounded-sm ${!isConfigured
-                  ? 'bg-red-500/20 border-red-500 text-red-500 animate-pulse'
-                  : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
-                  }`}
-                title="Configuration"
-              >
-                <Settings size={14} />
-              </button>
+              {/* Merge Controls */}
+              <div className="flex items-center gap-2">
+                {isMergeMode && mergeSelection.length === 2 ? (
+                  <button
+                    onClick={executeSynthesis}
+                    disabled={isSynthesizing}
+                    className="p-2 px-3 bg-amber-500 text-black font-bold text-xs font-mono uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(245,158,11,0.5)] hover:bg-amber-400 transition-all rounded-sm"
+                  >
+                    {isSynthesizing ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
+                    FUSE
+                  </button>
+                ) : null}
+
+                <button
+                  onClick={toggleMergeMode}
+                  className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isMergeMode
+                    ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                    : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                    }`}
+                >
+                  <GitMerge size={14} /> {isMergeMode ? 'CANCEL' : 'COMBINE'}
+                </button>
+
+                {/* Voice Toggle */}
+                <button
+                  onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                  className={`p-2 px-3 flex items-center gap-2 text-xs font-mono uppercase transition-all border rounded-sm ${isVoiceEnabled
+                    ? 'bg-purple-500/10 border-purple-500 text-purple-400'
+                    : 'bg-transparent border-cyber-border text-gray-400 hover:text-white hover:border-white'
+                    }`}
+                  title={isVoiceEnabled ? 'Disable Voice' : 'Enable Voice'}
+                >
+                  {isVoiceEnabled ? <Mic size={14} /> : <MicOff size={14} />}
+                  VOICE
+                </button>
+              </div>
             </div>
+          )}
+
+          {/* Settings Button (Always Visible) - Wrapped to match height of controls panel */}
+          <div className={`pointer-events-auto flex items-center justify-center bg-black/80 border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] ${!isConfigured
+            ? 'border-red-500 bg-red-500/10 animate-pulse'
+            : 'border-cyber-border'
+            }`}>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="text-gray-400 hover:text-white transition-colors flex items-center justify-center"
+              title="Configuration"
+            >
+              <Settings size={20} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -536,7 +540,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               <p className="mt-4 text-gray-600 text-[10px] font-mono text-center uppercase tracking-widest opacity-50">
-                // System: Gemini 2.5 Flash / Wikipedia API Integrated
+                // System: {keys.geminiModel || 'Gemini 3.0 Flash'} / Wikipedia API Integrated
               </p>
             </div>
           )}

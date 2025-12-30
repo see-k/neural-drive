@@ -43,7 +43,7 @@ export const fetchSubTopics = async (
   topic: string,
   parentContext?: string
 ): Promise<SubTopicResponse[]> => {
-  const model = "gemini-2.5-flash";
+  const model = getStoredAPIKeys().geminiModel || "gemini-3-flash-preview";
 
   const contextPrompt = parentContext
     ? `CONTEXT: The user is currently exploring the parent topic "${parentContext}". The topic "${topic}" is a specific branch within "${parentContext}".`
@@ -85,7 +85,7 @@ export const fetchSubTopics = async (
 export const fetchSynthesis = async (topicA: string, topicB: string): Promise<SubTopicResponse | null> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.5-flash",
+      model: getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp",
       contents: `Find the creative intersection, synthesis, or conflict between "${topicA}" and "${topicB}". 
       Create a new concept name (Title) and brief description that bridges these two.
       Example: If inputs are "Biology" and "Technology", output "Bioinformatics" or "Cybernetics".`,
@@ -154,7 +154,7 @@ export const generateNodeContent = async (topic: string): Promise<NodeContentRes
     } else {
       // Fallback to Gemini Text Generation if no Wiki page found
       const response = await getAI().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp",
         contents: `Write a comprehensive, deep, and structured encyclopedia article about "${topic}".
         
         Requirements:
@@ -228,7 +228,7 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 
 export const createChat = (topic: string, context: string) => {
   return getAI().chats.create({
-    model: 'gemini-2.5-flash',
+    model: getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp",
     config: {
       systemInstruction: `You are an expert AI tutor specialized in "${topic}". 
       Context about this topic: "${context}".
@@ -281,7 +281,7 @@ export const processVoiceCommand = async (
   transcript: string,
   currentTopic?: string
 ): Promise<ProcessedVoiceCommand> => {
-  const model = "gemini-2.5-flash";
+  const model = getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp";
 
   const contextInfo = currentTopic
     ? `The user is currently exploring: "${currentTopic}".`
@@ -350,7 +350,7 @@ export const generateVoiceSummary = async (
   topic: string,
   content: string
 ): Promise<string> => {
-  const model = "gemini-2.5-flash";
+  const model = getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp";
 
   // Truncate content if too long
   const truncatedContent = content.length > 2000
@@ -398,7 +398,7 @@ export const generateExplorationSuggestions = async (
   currentTopic: string,
   exploredTopics: string[]
 ): Promise<string[]> => {
-  const model = "gemini-2.5-flash";
+  const model = getStoredAPIKeys().geminiModel || "gemini-2.0-flash-exp";
 
   const exploredList = exploredTopics.length > 0
     ? `Already explored: ${exploredTopics.join(', ')}`
