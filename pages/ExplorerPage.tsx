@@ -14,12 +14,14 @@ interface ExplorerPageProps {
     isVoiceEnabled: boolean;
     setIsVoiceEnabled: (enabled: boolean) => void;
     onOpenSettings: () => void;
+    onNavigateToOrbitScope?: () => void;
 }
 
 export const ExplorerPage: React.FC<ExplorerPageProps> = ({
     isVoiceEnabled,
     setIsVoiceEnabled,
-    onOpenSettings
+    onOpenSettings,
+    onNavigateToOrbitScope,
 }) => {
     const { isConfigured } = useAPIKeys();
     const {
@@ -133,6 +135,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                 onOpenSettings={onOpenSettings}
                 isConfigured={isConfigured}
                 className={selectedNode ? 'md:mr-[490px] mr-80' : 'mr-0'}
+                onNavigateToOrbitScope={onNavigateToOrbitScope}
             />
 
             {isMergeMode && (

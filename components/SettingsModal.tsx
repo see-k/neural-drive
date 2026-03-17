@@ -110,6 +110,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         <p className="text-[10px] text-gray-500">Select the cognitive model for the application.</p>
                     </div>
 
+                    {/* OrbitScope: Google Maps & Cesium */}
+                    <div className="space-y-4 pt-4 border-t border-cyber-border/30">
+                        <div className="space-y-2">
+                            <label className="text-xs font-mono text-cyber-accent uppercase tracking-wider flex items-center justify-between">
+                                <span>Google Maps API Key (OrbitScope)</span>
+                                <a
+                                    href="https://console.cloud.google.com/apis/credentials"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 transition-colors"
+                                >
+                                    Get Key <ExternalLink size={10} />
+                                </a>
+                            </label>
+                            <input
+                                type="password"
+                                value={localKeys.googleMapsApiKey || ''}
+                                onChange={(e) => setLocalKeys(prev => ({ ...prev, googleMapsApiKey: e.target.value }))}
+                                placeholder="AIza..."
+                                className="w-full bg-black/50 border border-cyber-border rounded px-3 py-2 text-sm text-white focus:border-cyber-accent focus:outline-none transition-all font-mono"
+                            />
+                            <p className="text-[10px] text-gray-500">For Classic & Photorealistic 3D modes.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-mono text-cyber-accent uppercase tracking-wider flex items-center justify-between">
+                                <span>Cesium Ion Token (OrbitScope Globe)</span>
+                                <a
+                                    href="https://cesium.com/ion/tokens"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 transition-colors"
+                                >
+                                    Get Token <ExternalLink size={10} />
+                                </a>
+                            </label>
+                            <input
+                                type="password"
+                                value={localKeys.cesiumIonToken || ''}
+                                onChange={(e) => setLocalKeys(prev => ({ ...prev, cesiumIonToken: e.target.value }))}
+                                placeholder="eyJhbGciOi..."
+                                className="w-full bg-black/50 border border-cyber-border rounded px-3 py-2 text-sm text-white focus:border-cyber-accent focus:outline-none transition-all font-mono"
+                            />
+                            <p className="text-[10px] text-gray-500">For Globe mode (full Earth, satellite orbits). Free at cesium.com/ion.</p>
+                        </div>
+                    </div>
+
                     {/* ElevenLabs Config */}
                     <div className="space-y-4 pt-4 border-t border-cyber-border/30">
                         <div className="space-y-2">
@@ -155,7 +201,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <button
                         onClick={() => {
                             if (window.confirm("Are you sure you want to clear your credentials? This will disconnect you from AI services.")) {
-                                setKeys({ geminiApiKey: '', geminiModel: 'gemini-3-flash-preview', elevenLabsApiKey: '', elevenLabsVoiceId: '' });
+                                setKeys({ geminiApiKey: '', geminiModel: 'gemini-3-flash-preview', elevenLabsApiKey: '', elevenLabsVoiceId: '', googleMapsApiKey: '', cesiumIonToken: '' });
                                 onClose();
                             }
                         }}

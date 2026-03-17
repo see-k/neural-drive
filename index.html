@@ -89,6 +89,47 @@
       ::-webkit-scrollbar-thumb { background: #333; border: 1px solid #000; }
       ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
       
+      /* --- OrbitScope Visual Style Presets --- */
+      .orbit-scope-style-normal { filter: none; position: relative; }
+      .orbit-scope-style-crt {
+        position: relative;
+        filter: contrast(1.1) brightness(0.9) saturate(0.95);
+      }
+      .orbit-scope-style-crt::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent 0,
+          transparent 1px,
+          rgba(0, 0, 0, 0.15) 1px,
+          rgba(0, 0, 0, 0.15) 2px
+        );
+        pointer-events: none;
+      }
+      .orbit-scope-style-nvg {
+        position: relative;
+        filter: hue-rotate(90deg) saturate(2.5) contrast(1.2) brightness(1.1);
+      }
+      .orbit-scope-style-nvg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.08) 50%);
+        background-size: 100% 3px;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+      }
+      .orbit-scope-style-flir {
+        position: relative;
+        filter: grayscale(1) contrast(1.5) brightness(1.05) sepia(0.3) hue-rotate(-15deg);
+      }
+      .orbit-scope-style-noir {
+        position: relative;
+        filter: grayscale(0.95) contrast(1.35) brightness(0.85);
+      }
+
       /* --- SCANLINE & CRT FX --- */
       .scanline-overlay {
         position: fixed;

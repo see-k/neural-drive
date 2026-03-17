@@ -5,6 +5,8 @@ interface APIKeys {
     geminiModel: string;
     elevenLabsApiKey: string;
     elevenLabsVoiceId: string;
+    googleMapsApiKey: string;
+    cesiumIonToken: string;
 }
 
 interface APIKeysContextType {
@@ -19,6 +21,8 @@ const defaultKeys: APIKeys = {
     geminiModel: 'gemini-3-flash-preview',
     elevenLabsApiKey: '',
     elevenLabsVoiceId: '',
+    googleMapsApiKey: '',
+    cesiumIonToken: '',
 };
 
 const APIKeysContext = createContext<APIKeysContextType | null>(null);
@@ -43,6 +47,8 @@ export const APIKeysProvider: React.FC<{ children: ReactNode }> = ({ children })
             geminiModel: 'gemini-3-flash-preview',
             elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
             elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '',
+            googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+            cesiumIonToken: process.env.CESIUM_ION_TOKEN || '',
         };
     });
 
@@ -100,5 +106,7 @@ export const getStoredAPIKeys = (): APIKeys => {
         geminiModel: 'gemini-3-flash-preview',
         elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
         elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '',
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+        cesiumIonToken: process.env.CESIUM_ION_TOKEN || '',
     };
 };

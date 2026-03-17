@@ -5,7 +5,7 @@ import { useKnowledgeGraph } from '../contexts/KnowledgeGraphContext';
 import { IntroSequence } from '../components/IntroSequence';
 import { Header } from '../components/Header';
 
-export const LandingPage: React.FC<{ onOpenSettings: () => void }> = ({ onOpenSettings }) => {
+export const LandingPage: React.FC<{ onOpenSettings: () => void; onNavigateToOrbitScope?: () => void }> = ({ onOpenSettings, onNavigateToOrbitScope }) => {
     const { keys, isConfigured } = useAPIKeys();
     const { initializeGraph } = useKnowledgeGraph();
     const [inputValue, setInputValue] = useState('');
@@ -18,7 +18,7 @@ export const LandingPage: React.FC<{ onOpenSettings: () => void }> = ({ onOpenSe
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center relative z-10 p-4 w-full h-full">
-            <Header onOpenSettings={onOpenSettings} isConfigured={isConfigured} />
+            <Header onOpenSettings={onOpenSettings} isConfigured={isConfigured} onNavigateToOrbitScope={onNavigateToOrbitScope} />
 
             {!bootComplete ? (
                 <div className="w-full max-w-md">

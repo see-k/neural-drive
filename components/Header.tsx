@@ -1,14 +1,15 @@
 import React from 'react';
-import { BrainCircuit, Settings } from 'lucide-react';
+import { BrainCircuit, Settings, Globe } from 'lucide-react';
 
 interface HeaderProps {
     controls?: React.ReactNode;
     onOpenSettings: () => void;
-    isConfigured: boolean; // Determine button style
-    className?: string; // For positioning if needed
+    isConfigured: boolean;
+    className?: string;
+    onNavigateToOrbitScope?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ controls, onOpenSettings, isConfigured, className }) => {
+export const Header: React.FC<HeaderProps> = ({ controls, onOpenSettings, isConfigured, className, onNavigateToOrbitScope }) => {
     return (
         <div className={`absolute top-0 left-0 right-0 p-6 z-50 pointer-events-none flex flex-col md:flex-row justify-between items-start gap-8 w-full ${className || ''}`}>
             <div className="pointer-events-auto flex flex-col">
@@ -24,6 +25,18 @@ export const Header: React.FC<HeaderProps> = ({ controls, onOpenSettings, isConf
                 {controls && (
                     <div className="pointer-events-auto flex items-center gap-4 bg-black/80 border border-cyber-border p-2 backdrop-blur-md rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                         {controls}
+                    </div>
+                )}
+
+                {onNavigateToOrbitScope && (
+                    <div className="pointer-events-auto">
+                        <button
+                            onClick={onNavigateToOrbitScope}
+                            className="flex items-center gap-2 px-3 py-2 bg-black/80 border border-cyber-border rounded-sm text-gray-400 hover:text-cyber-accent hover:border-cyber-accent/50 transition-colors text-xs font-mono uppercase"
+                            title="OrbitScope"
+                        >
+                            <Globe size={16} /> OrbitScope
+                        </button>
                     </div>
                 )}
 

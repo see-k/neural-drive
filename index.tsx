@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import 'katex/dist/katex.min.css'; // LaTeX math styling
 const rootElement = document.getElementById('root');
@@ -13,7 +14,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <APIKeysProvider>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </APIKeysProvider>
   </React.StrictMode>
 );
